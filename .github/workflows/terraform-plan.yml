@@ -40,12 +40,12 @@ jobs:
       - name: Terraform Validate
         id: validate
         run: terraform validate -no-color 2>&1 | tee /tmp/tf_validate.log
-        continue-on-error: true
+        #continue-on-error: true
 
       - name: Terraform Plan
         id: plan
         run: terraform plan -no-color -out=tfplan 2>&1 | tee /tmp/tf_plan.log
-        continue-on-error: true
+        #continue-on-error: true
 
       - name: Upload Error Logs
         if: steps.init.outcome == 'failure' || steps.validate.outcome == 'failure' || steps.plan.outcome == 'failure'
