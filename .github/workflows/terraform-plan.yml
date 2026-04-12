@@ -71,19 +71,11 @@ jobs:
 
           # Method 1: gh auth login --with-token (reads PAT from stdin, no browser, no prompt)
           echo "${{ secrets.GITHUB_TOKEN }}" | gh auth login --with-token
-          echo "✅ gh auth login complete"
+          if [ $? -eq 0 ]; then
+            echo "✅ gh auth login complete"
+          else
+            echo "❌ gh auth login failed"
 
-          # Method 2: confirm gh auth status (proves it worked)
-          gh auth status
-
-          # Method 3: confirm COPILOT_GITHUB_TOKEN is set (Copilot CLI checks this first)
-          echo "COPILOT_GITHUB_TOKEN : $([ -n "$COPILOT_GITHUB_TOKEN" ] && echo ✅ SET || echo ❌ NOT SET)"
-          echo "GH_TOKEN             : $([ -n "$GH_TOKEN" ] && echo ✅ SET || echo ❌ NOT SET)"
-          echo "Token prefix         : $(echo "$COPILOT_GITHUB_TOKEN" | cut -c1-12)..."
-          echo "Token type           : $(echo "$COPILOT_GITHUB_TOKEN" | grep -q '^github_pat_' && echo ✅ Fine-grained PAT || echo ⚠️  Not a fine-grained PAT)"
-
-          echo "════════════════════════════════════════"
-           
       - name: Evaluate Terraform logs with Copilot
         if: always()
         env:
