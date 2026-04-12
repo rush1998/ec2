@@ -58,28 +58,12 @@ jobs:
       - name: Setup Copilot CLI
         if: always()
         uses: actions/setup-copilot@v0
-        with:
-          # This is the non-interactive auth — no login step needed
-          github-token: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Verify Copilot auth
-        if: always()
-        run: |
-          copilot version
-          echo "Token present: $([ -n "$COPILOT_GITHUB_TOKEN" ] && echo ✅ YES || echo ❌ NO)"
-      
-      - name: Verify Copilot auth
-        if: always()
-        run: |
-          copilot version
-          echo "Token present: $([ -n "$COPILOT_GITHUB_TOKEN" ] && echo ✅ YES || echo ❌ NO)"
 
       # ── Non-interactive login — all three methods applied together ────
       - name: Login to GitHub Copilot CLI (non-interactive)
         if: always()
         env:
           COPILOT_GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           echo "════════════════════════════════════════"
           echo "   🔐 GitHub Copilot CLI — Login Check"
