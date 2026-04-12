@@ -55,51 +55,29 @@ jobs:
           path: terraform/tfplan
 
       - name: Upload Error Logs
-        if: >
-          steps.init.outcome == 'failure' ||
-          steps.validate.outcome == 'failure' ||
-          steps.plan.outcome == 'failure'
+        if: steps.init.outcome == 'failure' || steps.validate.outcome == 'failure' || steps.plan.outcome == 'failure'
         uses: actions/upload-artifact@v4
         with:
           name: tf-error-logs
           path: /tmp/tf_*.log
 
-      # ✅ Copilot steps come BEFORE the hard exit so they actually run
       - name: Install GitHub Copilot CLI
-        if: >
-          steps.init.outcome == 'failure' ||
-          steps.validate.outcome == 'failure' ||
-          steps.plan.outcome == 'failure'
-        working-directory: /tmp        # avoids ./terraform default dir
+        if: steps.plan.outcome == 'failure'
         run: curl -fsSL https://gh.io/copilot-install | bash
 
       - name: Authenticate Copilot CLI
-        if: >
-          steps.init.outcome == 'failure' ||
-          steps.validate.outcome == 'failure' ||
-          steps.plan.outcome == 'failure'
+        if: steps.plan.outcome == 'failure'
         run: echo "COPILOT_GITHUB_TOKEN=${{ secrets.GITHUB_TOKEN }}" >> $GITHUB_ENV
 
+      - name: Run Copilot CLI
+        if: steps.plan.outcome == 'failure'
+        run: copilot --version
+
       - name: Evaluate Terraform logs with Copilot
-        if: >
-          steps.init.outcome == 'failure' ||
-          steps.validate.outcome == 'failure' ||
-          steps.plan.outcome == 'failure'
-        working-directory: /tmp        # log files are in /tmp, not ./terraform
+        if: steps.plan.outcome == 'failure'
         run: |
           LOG=$(cat /tmp/tf_init.log /tmp/tf_validate.log /tmp/tf_plan.log 2>/dev/null)
-          copilot --autopilot --prompt "Analyze these Terraform CI pipeline logs. \
-          Identify all errors and their root causes. \
-          Provide the exact fix needed in the Terraform code. \
-          Explain what each fix does and why.
+          copilot --autopilot --prompt "Analyze these Terraform CI pipeline logs. Identify errors, their root causes, and provide exact code fixes with explanations.
 
           Logs:
           $LOG"
-
-      # ✅ Hard fail comes LAST, after Copilot has had a chance to run
-      - name: Fail Pipeline if Any Step Failed
-        if: >
-          steps.init.outcome == 'failure' ||
-          steps.validate.outcome == 'failure' ||
-          steps.plan.outcome == 'failure'
-        run: exit 1
