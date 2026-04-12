@@ -13,8 +13,7 @@ jobs:
       id-token: write
       contents: write
     env:
-      COPILOT_GITHUB_TOKEN: ${{ secrets.COPILOT_GITHUB_TOKEN }}
-      GH_TOKEN: ${{ github.token }}   # ✅ required for gh auth status and gh CLI commands
+      GH_TOKEN: ${{ secrets.COPILOT_GITHUB_TOKEN }}   # ✅ required for gh auth status and gh CLI commands
     defaults:
       run:
         working-directory: ./terraform
