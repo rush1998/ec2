@@ -14,6 +14,7 @@ jobs:
       contents: write
     env:
       COPILOT_GITHUB_TOKEN: ${{ secrets.COPILOT_GITHUB_TOKEN }}
+      GH_TOKEN: ${{ github.token }}        # ✅ silences gh warning
     defaults:
       run:
         working-directory: ./terraform
@@ -59,6 +60,8 @@ jobs:
       - name: Setup Copilot CLI
         if: always()
         uses: actions/setup-copilot@v0
+        with:
+          github-token: ${{ secrets.COPILOT_GITHUB_TOKEN }}   # ✅ required
 
       - name: Copilot CLI Auth Check & Terraform Analysis
         if: always()
@@ -67,14 +70,41 @@ jobs:
           echo "   🤖 GitHub Copilot CLI — Terraform Analysis"
           echo "════════════════════════════════════════"
           echo ""
+
+          # ✅ Token sanity check before calling copilot
+          echo "Token present : $([ -n "$COPILOT_GITHUB_TOKEN" ] && echo '✅ SET' || echo '❌ NOT SET')"
+          echo "Token type    : $(echo "$COPILOT_GITHUB_TOKEN" | grep -q '^github_pat_' \
+            && echo '✅ Fine-grained PAT' \
+            || echo '❌ Wrong token type — must be github_pat_')"
+          echo ""
+
+          VALIDATE_OK=false
+          PLAN_OK=false
+
+          if [ -s /tmp/tf_validate.log ]; then
+            VALIDATE_OK=true
+          fi
+          if [ -s /tmp/tf_plan.log ]; then
+            PLAN_OK=true
+          fi
+
+          if [ "$VALIDATE_OK" = true ] && [ "$PLAN_OK" = true ]; then
+            LOG="$(cat /tmp/tf_validate.log /tmp/tf_plan.log)"
+          elif [ "$VALIDATE_OK" = true ]; then
+            LOG="$(cat /tmp/tf_validate.log)"
+          elif [ "$PLAN_OK" = true ]; then
+            LOG="$(cat /tmp/tf_plan.log)"
+          else
+            echo "❌ Both logs missing or empty — skipping Copilot analysis"
+            exit 1
+          fi
+
           echo "📂 Log files passed to Copilot:"
           echo "   → /tmp/tf_validate.log"
           echo "   → /tmp/tf_plan.log"
           echo ""
           echo "⏳ Running Copilot analysis... please wait"
           echo "────────────────────────────────────────"
-
-          LOG="$(cat /tmp/tf_validate.log /tmp/tf_plan.log)"
 
           copilot \
             --add-dir=/tmp \
@@ -92,10 +122,8 @@ jobs:
           $LOG" 2>&1 | tee /tmp/copilot_output.txt
 
           echo "────────────────────────────────────────"
-          echo ""
           echo "📄 Copilot raw output saved to: /tmp/copilot_output.txt"
           echo "📊 Output size: $(wc -l < /tmp/copilot_output.txt) lines"
-          echo ""
           echo "✅ Copilot analysis complete"
           echo "════════════════════════════════════════"
 
