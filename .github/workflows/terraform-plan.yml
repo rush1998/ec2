@@ -14,7 +14,7 @@ jobs:
       contents: write
     env:
       COPILOT_GITHUB_TOKEN: ${{ secrets.COPILOT_GITHUB_TOKEN }}
-      GH_TOKEN: ${{ github.token }}        # ✅ silences gh warning
+      GH_TOKEN: ${{ github.token }}
     defaults:
       run:
         working-directory: ./terraform
@@ -61,48 +61,17 @@ jobs:
         if: always()
         uses: actions/setup-copilot@v0
         with:
-          github-token: ${{ secrets.COPILOT_GITHUB_TOKEN }}   # ✅ required
+          github-token: ${{ secrets.COPILOT_GITHUB_TOKEN }}
 
-      - name: Copilot CLI Auth Check & Terraform Analysis
+      - name: Copilot Terraform Analysis
         if: always()
         run: |
           echo "════════════════════════════════════════"
           echo "   🤖 GitHub Copilot CLI — Terraform Analysis"
           echo "════════════════════════════════════════"
-          echo ""
 
-          # ✅ Token sanity check before calling copilot
-          echo "Token present : $([ -n "$COPILOT_GITHUB_TOKEN" ] && echo '✅ SET' || echo '❌ NOT SET')"
-          echo "Token type    : $(echo "$COPILOT_GITHUB_TOKEN" | grep -q '^github_pat_' \
-            && echo '✅ Fine-grained PAT' \
-            || echo '❌ Wrong token type — must be github_pat_')"
-          echo ""
+          LOG="$(cat /tmp/tf_validate.log /tmp/tf_plan.log)"
 
-          VALIDATE_OK=false
-          PLAN_OK=false
-
-          if [ -s /tmp/tf_validate.log ]; then
-            VALIDATE_OK=true
-          fi
-          if [ -s /tmp/tf_plan.log ]; then
-            PLAN_OK=true
-          fi
-
-          if [ "$VALIDATE_OK" = true ] && [ "$PLAN_OK" = true ]; then
-            LOG="$(cat /tmp/tf_validate.log /tmp/tf_plan.log)"
-          elif [ "$VALIDATE_OK" = true ]; then
-            LOG="$(cat /tmp/tf_validate.log)"
-          elif [ "$PLAN_OK" = true ]; then
-            LOG="$(cat /tmp/tf_plan.log)"
-          else
-            echo "❌ Both logs missing or empty — skipping Copilot analysis"
-            exit 1
-          fi
-
-          echo "📂 Log files passed to Copilot:"
-          echo "   → /tmp/tf_validate.log"
-          echo "   → /tmp/tf_plan.log"
-          echo ""
           echo "⏳ Running Copilot analysis... please wait"
           echo "────────────────────────────────────────"
 
