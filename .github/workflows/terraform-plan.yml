@@ -37,15 +37,16 @@ jobs:
         run: terraform init 2>&1 | tee /tmp/tf_init.log
         continue-on-error: true
 
+      # ✅ continue-on-error restored — required so Copilot steps always run
       - name: Terraform Validate
         id: validate
         run: terraform validate -no-color 2>&1 | tee /tmp/tf_validate.log
-        #continue-on-error: true
+        continue-on-error: true
 
       - name: Terraform Plan
         id: plan
         run: terraform plan -no-color -out=tfplan 2>&1 | tee /tmp/tf_plan.log
-        #continue-on-error: true
+        continue-on-error: true
 
       - name: Upload Terraform Logs
         if: always()
@@ -54,51 +55,65 @@ jobs:
           name: tf-logs
           path: /tmp/tf_*.log
 
-      # ✅ Replaces the manual curl install step entirely
+      # ✅ Use secrets.COPILOT_TOKEN (fine-grained PAT with Copilot Requests permission)
+      # secrets.GITHUB_TOKEN = ghs_ token = no Copilot API access = 0 lines output
       - name: Setup Copilot CLI
         if: always()
         uses: actions/setup-copilot@v0
+        with:
+          github-token: ${{ secrets.COPILOT_TOKEN }}
 
-      # ── Non-interactive login — all three methods applied together ────
       - name: Login to GitHub Copilot CLI (non-interactive)
         if: always()
         env:
-          COPILOT_GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          COPILOT_GITHUB_TOKEN: ${{ secrets.COPILOT_TOKEN }}
         run: |
           echo "════════════════════════════════════════"
           echo "   🔐 GitHub Copilot CLI — Login Check"
           echo "════════════════════════════════════════"
-          echo "${{ secrets.GITHUB_TOKEN }}" | gh auth login --with-token
+
+          # Unset GH_TOKEN so gh auth login stores credentials instead of being bypassed
+          unset GH_TOKEN
+          echo "$COPILOT_GITHUB_TOKEN" | gh auth login --with-token
           if [ $? -eq 0 ]; then
             echo "✅ gh auth login complete"
           else
             echo "❌ gh auth login failed"
+            exit 1
           fi
-          # Confirm stored credentials
+
           gh auth status
+
+          # Token type check — must be github_pat_ for Copilot API access
+          echo "Token type: $(echo "$COPILOT_GITHUB_TOKEN" | grep -q '^github_pat_' \
+            && echo '✅ Fine-grained PAT — Copilot API access expected' \
+            || echo '❌ NOT a fine-grained PAT — Copilot will produce 0 lines of output')"
 
           echo "════════════════════════════════════════"
           echo "   📋 Checking Terraform Log Files"
           echo "════════════════════════════════════════"
 
-          # Check validate log
+          VALIDATE_OK=false
+          PLAN_OK=false
+
           if [ -s /tmp/tf_validate.log ]; then
             echo "✅ tf_validate.log exists ($(wc -l < /tmp/tf_validate.log) lines)"
             echo "── Contents ──────────────────────────────"
             cat /tmp/tf_validate.log
+            VALIDATE_OK=true
           else
-            echo "⚠️  tf_validate.log is missing or empty"
+            echo "❌ tf_validate.log is missing or empty"
           fi
 
           echo "──────────────────────────────────────────"
 
-          # Check plan log
           if [ -s /tmp/tf_plan.log ]; then
             echo "✅ tf_plan.log exists ($(wc -l < /tmp/tf_plan.log) lines)"
             echo "── Contents ──────────────────────────────"
             cat /tmp/tf_plan.log
+            PLAN_OK=true
           else
-            echo "⚠️  tf_plan.log is missing or empty"
+            echo "❌ tf_plan.log is missing or empty"
           fi
 
           echo "════════════════════════════════════════"
@@ -112,7 +127,19 @@ jobs:
           echo "⏳ Running Copilot analysis... please wait"
           echo "────────────────────────────────────────"
 
-          LOG=$(cat /tmp/tf_validate.log /tmp/tf_plan.log 2>/dev/null)
+          if [ "$VALIDATE_OK" = true ] && [ "$PLAN_OK" = true ]; then
+            echo "✅ Both logs present — passing both to Copilot"
+            LOG="$(cat /tmp/tf_validate.log /tmp/tf_plan.log)"
+          elif [ "$VALIDATE_OK" = true ] && [ "$PLAN_OK" = false ]; then
+            echo "⚠️  Only validate log found — passing validate only"
+            LOG="$(cat /tmp/tf_validate.log)"
+          elif [ "$VALIDATE_OK" = false ] && [ "$PLAN_OK" = true ]; then
+            echo "⚠️  Only plan log found — passing plan only"
+            LOG="$(cat /tmp/tf_plan.log)"
+          else
+            echo "❌ Both logs missing or empty — skipping Copilot analysis"
+            exit 1
+          fi
 
           copilot \
             --add-dir=/tmp \
@@ -137,8 +164,22 @@ jobs:
           echo "✅ Copilot analysis complete"
           echo "════════════════════════════════════════"
 
-          # Write to Step Summary
           echo "## 🤖 Copilot Terraform Analysis" >> $GITHUB_STEP_SUMMARY
           echo '```' >> $GITHUB_STEP_SUMMARY
           cat /tmp/copilot_output.txt >> $GITHUB_STEP_SUMMARY
           echo '```' >> $GITHUB_STEP_SUMMARY
+
+      - name: Upload Copilot Analysis
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: copilot-analysis
+          path: /tmp/copilot_output.txt
+
+      # ✅ Hard fail LAST — after Copilot has run
+      - name: Fail if Terraform errored
+        if: >
+          steps.init.outcome == 'failure' ||
+          steps.validate.outcome == 'failure' ||
+          steps.plan.outcome == 'failure'
+        run: exit 1
