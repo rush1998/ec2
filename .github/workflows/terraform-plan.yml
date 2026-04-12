@@ -68,38 +68,58 @@ jobs:
           echo "════════════════════════════════════════"
           echo "   🔐 GitHub Copilot CLI — Login Check"
           echo "════════════════════════════════════════"
-
-          # Method 1: gh auth login --with-token (reads PAT from stdin, no browser, no prompt)
           echo "${{ secrets.GITHUB_TOKEN }}" | gh auth login --with-token
           if [ $? -eq 0 ]; then
             echo "✅ gh auth login complete"
           else
             echo "❌ gh auth login failed"
           fi
-      - name: Evaluate Terraform logs with Copilot
-        if: always()
-        run: |
-          LOG="$(cat /tmp/tf_init.log /tmp/tf_validate.log /tmp/tf_plan.log 2>/dev/null || true)"
+          # Confirm stored credentials
+          gh auth status
+
+          echo "════════════════════════════════════════"
+          echo "   📋 Checking Terraform Log Files"
+          echo "════════════════════════════════════════"
+
+          # Check validate log
+          if [ -s /tmp/tf_validate.log ]; then
+            echo "✅ tf_validate.log exists ($(wc -l < /tmp/tf_validate.log) lines)"
+            echo "── Contents ──────────────────────────────"
+            cat /tmp/tf_validate.log
+          else
+            echo "⚠️  tf_validate.log is missing or empty"
+          fi
 
           echo "──────────────────────────────────────────"
-          echo "🤖 GitHub Copilot CLI — Terraform Analysis"
-          echo "──────────────────────────────────────────"
 
-          COPILOT_OUTPUT=$(copilot \
+          # Check plan log
+          if [ -s /tmp/tf_plan.log ]; then
+            echo "✅ tf_plan.log exists ($(wc -l < /tmp/tf_plan.log) lines)"
+            echo "── Contents ──────────────────────────────"
+            cat /tmp/tf_plan.log
+          else
+            echo "⚠️  tf_plan.log is missing or empty"
+          fi
+
+          echo "════════════════════════════════════════"
+          echo "   🤖 Copilot Analysis"
+          echo "════════════════════════════════════════"
+
+          # Build log content from both files
+          LOG="$(cat /tmp/tf_validate.log /tmp/tf_plan.log 2>/dev/null || true)"
+
+          # Run Copilot non-interactively against the logs
+          copilot \
             --no-ask-user \
             --allow-all-tools \
-            -p "You are a Terraform and GitHub Actions expert.
-          Analyze the following Terraform CI pipeline logs.
+            -p "You are a Terraform expert.
+          Analyze these Terraform CI logs.
           1. List every error found.
           2. Explain the root cause of each error.
           3. Provide the exact Terraform code fix.
           Output plain text only. Be concise.
 
           Logs:
-          $LOG" 2>&1 | tee /dev/stderr)
+          $LOG"
 
-          # Write to GitHub Actions Step Summary
-          echo "## 🤖 Copilot Terraform Analysis" >> $GITHUB_STEP_SUMMARY
-          echo '```' >> $GITHUB_STEP_SUMMARY
-          echo "$COPILOT_OUTPUT" >> $GITHUB_STEP_SUMMARY
-          echo '```' >> $GITHUB_STEP_SUMMARY
+          echo "════════════════════════════════════════"
