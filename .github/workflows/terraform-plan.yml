@@ -68,4 +68,4 @@ jobs:
       - name: Evaluate logs with GitHub Copilot
         uses: actions/setup-copilot@v0
         if: ${{ failure() && steps.plan.conclusion == 'failure' }}
-      - run: copilot -p "evaluate the error logs"
+      - run: copilot --version
