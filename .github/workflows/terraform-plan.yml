@@ -112,6 +112,8 @@ jobs:
           echo "⏳ Running Copilot analysis... please wait"
           echo "────────────────────────────────────────"
 
+          LOG=$(cat /tmp/tf_validate.log /tmp/tf_plan.log 2>/dev/null)
+
           copilot \
             --add-dir=/tmp \
             --no-ask-user \
