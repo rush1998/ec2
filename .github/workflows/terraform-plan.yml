@@ -66,19 +66,19 @@ jobs:
         run: exit 1
 
       - name: Install GitHub Copilot CLI
-        if: failure()
+        if: steps.plan.outcome == 'failure'
         run: curl -fsSL https://gh.io/copilot-install | bash
 
       - name: Authenticate Copilot CLI
-        if: failure()
+        if: steps.plan.outcome == 'failure'
         run: echo "COPILOT_GITHUB_TOKEN=${{ secrets.GITHUB_TOKEN }}" >> $GITHUB_ENV
 
       - name: Run Copilot CLI
-        if: failure()
+        if: steps.plan.outcome == 'failure'
         run: copilot --version
 
       - name: Evaluate Terraform logs with Copilot
-        if: failure()
+        if: steps.plan.outcome == 'failure'
         run: |
           LOG=$(cat /tmp/tf_init.log /tmp/tf_validate.log /tmp/tf_plan.log 2>/dev/null)
           copilot --autopilot --prompt "Analyze these Terraform CI pipeline logs. Identify errors, their root causes, and provide exact code fixes with explanations.
