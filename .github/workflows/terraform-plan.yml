@@ -64,12 +64,26 @@ jobs:
       - name: Run Copilot CLI
         if: always()
         run: copilot --version
+      
+      - name: Verify Copilot auth
+        if: always()
+        run: |
+          copilot version
+          echo "COPILOT_GITHUB_TOKEN set: $([ -n "$COPILOT_GITHUB_TOKEN" ] && echo yes || echo no)"
+          test -s /tmp/tf_validate.log && echo "validate log exists"
+          test -s /tmp/tf_plan.log && echo "plan log exists"
 
       - name: Evaluate Terraform logs with Copilot
         if: always()
+        working-directory: /tmp
         run: |
-          LOG=$(cat /tmp/tf_init.log /tmp/tf_validate.log /tmp/tf_plan.log 2>/dev/null)
-          copilot --autopilot --prompt "Analyze these Terraform CI pipeline logs. Identify errors, their root causes, and provide exact code fixes with explanations.
+          echo "Reading logs from /tmp/tf_validate.log and /tmp/tf_plan.log"
+          LOG="$(cat /tmp/tf_validate.log /tmp/tf_plan.log 2>/dev/null || true)"
+          printf '%s\n' "$LOG" | head -n 40
+          copilot \
+            --prompt "Analyze these Terraform CI logs. Identify the errors, root cause, and exact fix. Output plain text only.
 
           Logs:
-          $LOG"
+          $LOG" \
+                --no-ask-user \
+                --silent
