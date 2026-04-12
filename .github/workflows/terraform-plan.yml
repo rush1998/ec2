@@ -47,34 +47,43 @@ jobs:
         run: terraform plan -no-color -out=tfplan 2>&1 | tee /tmp/tf_plan.log
         #continue-on-error: true
 
-      - name: Upload Error Logs
+      - name: Upload Terraform Logs
+        if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: tf-error-logs
+          name: tf-logs
           path: /tmp/tf_*.log
 
-      - name: Install GitHub Copilot CLI
+      # ✅ Replaces the manual curl install step entirely
+      - name: Setup Copilot CLI
         if: always()
-        run: curl -fsSL https://gh.io/copilot-install | bash
+        uses: actions/setup-copilot@v0
+        with:
+          # This is the non-interactive auth — no login step needed
+          github-token: ${{ secrets.COPILOT_TOKEN }}
 
-      - name: Authenticate Copilot CLI
-        if: always()
-        run: echo "COPILOT_GITHUB_TOKEN=${{ secrets.GITHUB_TOKEN }}" >> $GITHUB_ENV
-
-      - name: Run Copilot CLI
-        if: always()
-        run: copilot --version
-      
       - name: Verify Copilot auth
         if: always()
         run: |
           copilot version
-          echo "COPILOT_GITHUB_TOKEN set: $([ -n "$COPILOT_GITHUB_TOKEN" ] && echo yes || echo no)"
-          test -s /tmp/tf_validate.log && echo "validate log exists"
-          test -s /tmp/tf_plan.log && echo "plan log exists"
+          echo "Token present: $([ -n "$COPILOT_GITHUB_TOKEN" ] && echo ✅ YES || echo ❌ NO)"
+      
+      - name: Echo Copilot login details
+        if: always()
+        env:
+          COPILOT_GITHUB_TOKEN: ${{ secrets.COPILOT_TOKEN }}
+        run: |
+          echo "════════════════════════════════════════"
+          echo "       🔐 Copilot Auth Details"
+          echo "════════════════════════════════════════"
+          echo "Runner user     : $(whoami)"
+          echo "Runner hostname : $(hostname)"
+          echo "════════════════════════════════════════"
 
       - name: Evaluate Terraform logs with Copilot
         if: always()
+        env:
+          COPILOT_GITHUB_TOKEN: ${{ secrets.COPILOT_TOKEN }}
         run: |
           LOG="$(cat /tmp/tf_init.log /tmp/tf_validate.log /tmp/tf_plan.log 2>/dev/null || true)"
 
@@ -82,7 +91,6 @@ jobs:
           echo "🤖 GitHub Copilot CLI — Terraform Analysis"
           echo "──────────────────────────────────────────"
 
-          # Capture AND print to console at the same time
           COPILOT_OUTPUT=$(copilot \
             --no-ask-user \
             --allow-all-tools \
@@ -90,16 +98,13 @@ jobs:
           Analyze the following Terraform CI pipeline logs.
           1. List every error found.
           2. Explain the root cause of each error.
-          3. Provide the exact Terraform code fix for each error.
+          3. Provide the exact Terraform code fix.
           Output plain text only. Be concise.
 
           Logs:
           $LOG" 2>&1 | tee /dev/stderr)
 
-          echo "──────────────────────────────────────────"
-          echo "✅ Copilot analysis complete"
-
-          # Write to GitHub Actions Step Summary (visible in the workflow UI)
+          # Write to GitHub Actions Step Summary
           echo "## 🤖 Copilot Terraform Analysis" >> $GITHUB_STEP_SUMMARY
           echo '```' >> $GITHUB_STEP_SUMMARY
           echo "$COPILOT_OUTPUT" >> $GITHUB_STEP_SUMMARY
