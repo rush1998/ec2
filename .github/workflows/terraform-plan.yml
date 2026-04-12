@@ -68,49 +68,7 @@ jobs:
       - name: Evaluate logs with GitHub Copilot
         uses: actions/setup-copilot@v0
         if: ${{ failure() && steps.plan.conclusion == 'failure' }}
-      - run: |
-          ERROR_LOG=$(cat /tmp/tf_init.log /tmp/tf_validate.log /tmp/tf_plan.log 2>/dev/null \
-            | grep -A5 -E "(Error|error|╷)" \
-            | head -80)
-
-          if [ -z "$ERROR_LOG" ]; then
-            ERROR_LOG=$(cat /tmp/tf_init.log /tmp/tf_validate.log /tmp/tf_plan.log 2>/dev/null | tail -50)
-          fi
-
-          echo "## Terraform Error Output" >> $GITHUB_STEP_SUMMARY
-          echo '```' >> $GITHUB_STEP_SUMMARY
-          echo "$ERROR_LOG" >> $GITHUB_STEP_SUMMARY
-          echo '```' >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
-
-          RESPONSE=$(curl -s \
-            -X POST \
-            -H "Authorization: Bearer $GITHUB_TOKEN" \
-            -H "Content-Type: application/json" \
-            -H "Accept: application/vnd.github+json" \
-            https://models.inference.ai.azure.com/chat/completions \
-            -d "$(jq -n \
-              --arg error "$ERROR_LOG" \
-              '{
-                model: "gpt-4o",
-                messages: [
-                  {
-                    role: "system",
-                    content: "You are a senior DevOps engineer. Analyze ONLY the Terraform error output provided. Do NOT evaluate anything else. Respond strictly in this format:\n## Why It Occurred\n<2-3 sentence explanation>\n## Solution 1 (Best Practice)\n<solution>\n## Solution 2 (Alternative Best Practice)\n<solution>"
-                  },
-                  {
-                    role: "user",
-                    content: ("Here is the Terraform error output:\n" + $error)
-                  }
-                ],
-                max_tokens: 800
-              }'
-            )")
-
-          ANALYSIS=$(echo "$RESPONSE" | jq -r '.choices[0].message.content // "Could not get analysis from GitHub Models API."')
-
-          echo "## Copilot Error Analysis" >> $GITHUB_STEP_SUMMARY
-          echo "$ANALYSIS" >> $GITHUB_STEP_SUMMARY
+      - run: copilot -p "evaluate the error logs"
 
   approval:
     name: Awaiting Manual Approval
@@ -126,7 +84,7 @@ jobs:
   terraform-apply:
     name: Terraform Apply
     runs-on: ubuntu-latest
-    needs: terraform-plan
+    needs: approval
     permissions:
       id-token: write
       contents: read
