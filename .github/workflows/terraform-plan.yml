@@ -14,7 +14,7 @@ jobs:
       contents: write
     env:
       COPILOT_GITHUB_TOKEN: ${{ secrets.COPILOT_GITHUB_TOKEN }}
-      #GH_TOKEN: ${{ github.token }}
+      GH_TOKEN: ${{ github.token }}   # ✅ required for gh auth status and gh CLI commands
     defaults:
       run:
         working-directory: ./terraform
@@ -63,10 +63,13 @@ jobs:
         with:
           github-token: ${{ secrets.COPILOT_GITHUB_TOKEN }}
 
+      - name: Check GitHub Auth Status
+        if: always()
+        run: gh auth status
+
       - name: Copilot Terraform Analysis
         if: always()
-        run: | 
-          gh auth status || true
+        run: |
           echo "════════════════════════════════════════"
           echo "   🤖 GitHub Copilot CLI — Terraform Analysis"
           echo "════════════════════════════════════════"
