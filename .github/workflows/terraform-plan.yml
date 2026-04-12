@@ -65,7 +65,11 @@ jobs:
         if: steps.init.outcome == 'failure' || steps.validate.outcome == 'failure' || steps.plan.outcome == 'failure'
         run: exit 1
 
-      - name: Evaluate logs with GitHub Copilot
-        uses: actions/setup-copilot@v0
-        if: ${{ failure() && steps.plan.conclusion == 'failure' }}
-      - run: copilot --version
+      - name: Install GitHub Copilot CLI
+        run: curl -fsSL https://gh.io/copilot-install | bash
+
+      - name: Authenticate Copilot CLI
+        run: echo "COPILOT_GITHUB_TOKEN=${{ secrets.GITHUB_TOKEN }}" >> $GITHUB_ENV
+
+      - name: Run Copilot CLI
+        run: copilot --version
