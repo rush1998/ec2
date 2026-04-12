@@ -47,13 +47,6 @@ jobs:
         run: terraform plan -no-color -out=tfplan 2>&1 | tee /tmp/tf_plan.log
         continue-on-error: true
 
-      - name: Upload Plan Artifact
-        if: steps.plan.outcome == 'success'
-        uses: actions/upload-artifact@v4
-        with:
-          name: tfplan
-          path: terraform/tfplan
-
       - name: Upload Error Logs
         if: steps.init.outcome == 'failure' || steps.validate.outcome == 'failure' || steps.plan.outcome == 'failure'
         uses: actions/upload-artifact@v4
