@@ -48,26 +48,25 @@ jobs:
         #continue-on-error: true
 
       - name: Upload Error Logs
-        if: steps.init.outcome == 'failure' || steps.validate.outcome == 'failure' || steps.plan.outcome == 'failure'
         uses: actions/upload-artifact@v4
         with:
           name: tf-error-logs
           path: /tmp/tf_*.log
 
       - name: Install GitHub Copilot CLI
-        if: failure() && steps.plan.outcome == 'failure' || steps.validate.outcome == 'failure' || steps.init.outcome == 'failure'
+        if: always()
         run: curl -fsSL https://gh.io/copilot-install | bash
 
       - name: Authenticate Copilot CLI
-        if: failure() && steps.plan.outcome == 'failure' || steps.validate.outcome == 'failure' || steps.init.outcome == 'failure'
+        if: always()
         run: echo "COPILOT_GITHUB_TOKEN=${{ secrets.GITHUB_TOKEN }}" >> $GITHUB_ENV
 
       - name: Run Copilot CLI
-        if: failure() && steps.plan.outcome == 'failure' || steps.validate.outcome == 'failure' || steps.init.outcome == 'failure'
+        if: always()
         run: copilot --version
 
       - name: Evaluate Terraform logs with Copilot
-        if: failure() && steps.plan.outcome == 'failure' || steps.validate.outcome == 'failure' || steps.init.outcome == 'failure'
+        if: always()
         run: |
           LOG=$(cat /tmp/tf_init.log /tmp/tf_validate.log /tmp/tf_plan.log 2>/dev/null)
           copilot --autopilot --prompt "Analyze these Terraform CI pipeline logs. Identify errors, their root causes, and provide exact code fixes with explanations.
