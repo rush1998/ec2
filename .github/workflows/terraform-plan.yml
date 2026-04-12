@@ -54,23 +54,114 @@ jobs:
           name: tf-error-logs
           path: /tmp/tf_*.log
 
+      - name: Fail Pipeline if Any Step Failed
+        if: steps.init.outcome == 'failure' || steps.validate.outcome == 'failure' || steps.plan.outcome == 'failure'
+        run: exit 1
+
+  copilot-error-analysis:
+    name: Copilot Error Analysis
+    runs-on: ubuntu-latest
+    needs: terraform-plan
+    if: failure()
+    permissions:
+      contents: read
+
+    steps:
+      - name: Download Error Logs
+        uses: actions/download-artifact@v4
+        with:
+          name: tf-error-logs
+          path: /tmp/
+
+      - name: Check for Terraform Exit Code 1
+        id: check_error
+        run: |
+          if grep -q "exit code 1\|Terraform exited with code 1" /tmp/tf_*.log 2>/dev/null; then
+            echo "error_found=true" >> $GITHUB_OUTPUT
+          else
+            echo "error_found=false" >> $GITHUB_OUTPUT
+          fi
+
       - name: Install GitHub Copilot CLI
-        if: steps.plan.outcome == 'failure'
+        if: steps.check_error.outputs.error_found == 'true'
         run: curl -fsSL https://gh.io/copilot-install | bash
 
       - name: Authenticate Copilot CLI
-        if: steps.plan.outcome == 'failure'
+        if: steps.check_error.outputs.error_found == 'true'
         run: echo "COPILOT_GITHUB_TOKEN=${{ secrets.GITHUB_TOKEN }}" >> $GITHUB_ENV
 
       - name: Run Copilot CLI
-        if: steps.plan.outcome == 'failure'
+        if: steps.check_error.outputs.error_found == 'true'
         run: copilot --version
 
       - name: Evaluate Terraform logs with Copilot
-        if: steps.plan.outcome == 'failure'
+        if: steps.check_error.outputs.error_found == 'true'
         run: |
           LOG=$(cat /tmp/tf_init.log /tmp/tf_validate.log /tmp/tf_plan.log 2>/dev/null)
           copilot --autopilot --prompt "Analyze these Terraform CI pipeline logs. Identify errors, their root causes, and provide exact code fixes with explanations.
 
           Logs:
           $LOG"
+
+  approval:
+    name: Awaiting Manual Approval
+    runs-on: ubuntu-latest
+    needs: terraform-plan
+    if: success()
+    environment: production
+
+    steps:
+      - name: Approval Granted
+        run: echo "Approved. Proceeding to Terraform Apply..."
+
+  terraform-apply:
+    name: Terraform Apply
+    runs-on: ubuntu-latest
+    needs: approval
+    permissions:
+      id-token: write
+      contents: read
+    defaults:
+      run:
+        working-directory: ./terraform
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: us-east-1
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: 1.7.0
+
+      - name: Terraform Init
+        run: terraform init
+
+      - name: Download Plan Artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: tfplan
+          path: terraform/
+
+      - name: Terraform Apply
+        id: apply
+        run: terraform apply -auto-approve tfplan 2>&1 | tee /tmp/tf_apply.log
+        continue-on-error: true
+
+      - name: Upload Apply Error Log
+        if: steps.apply.outcome == 'failure'
+        uses: actions/upload-artifact@v4
+        with:
+          name: tf-apply-error-log
+          path: /tmp/tf_apply.log
+
+      - name: Fail if Apply Failed
+        if: steps.apply.outcome == 'failure'
+        run: exit 1
