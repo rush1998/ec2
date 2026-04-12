@@ -65,10 +65,70 @@ jobs:
         if: steps.init.outcome == 'failure' || steps.validate.outcome == 'failure' || steps.plan.outcome == 'failure'
         run: exit 1
 
-      - name: Evaluate logs with GitHub Copilot
-        uses: actions/setup-copilot@v0
-        if: ${{ failure() && steps.plan.conclusion == 'failure' }}
-      - run: copilot -p "evaluate the error logs"
+  copilot-error-analysis:
+    name: Copilot Error Analysis
+    runs-on: ubuntu-latest
+    needs: terraform-plan
+    if: failure()
+    permissions:
+      contents: read
+
+    steps:
+      - name: Download Error Logs
+        uses: actions/download-artifact@v4
+        with:
+          name: tf-error-logs
+          path: /tmp/
+
+      - name: Install GitHub Copilot CLI
+        run: npm install -g @github/copilot-cli
+
+      - name: Authenticate Copilot CLI
+        env:
+          GITHUB_TOKEN: ${{ secrets.COPILOT_PAT }}
+        run: |
+          echo "$GITHUB_TOKEN" | gh auth login --with-token
+          gh extension install github/gh-copilot --force
+
+      - name: Evaluate Terraform Error with Copilot
+        env:
+          GITHUB_TOKEN: ${{ secrets.COPILOT_PAT }}
+        run: |
+          ERROR_LOG=$(cat /tmp/tf_init.log /tmp/tf_validate.log /tmp/tf_plan.log 2>/dev/null \
+            | grep -A5 -E "(Error|error|\u2577)" \
+            | head -80)
+
+          if [ -z "$ERROR_LOG" ]; then
+            ERROR_LOG=$(cat /tmp/tf_init.log /tmp/tf_validate.log /tmp/tf_plan.log 2>/dev/null | tail -50)
+          fi
+
+          echo "## Terraform Error Output" >> $GITHUB_STEP_SUMMARY
+          echo '```' >> $GITHUB_STEP_SUMMARY
+          echo "$ERROR_LOG" >> $GITHUB_STEP_SUMMARY
+          echo '```' >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+
+          ANALYSIS=$(copilot -p "You are a senior DevOps engineer. Analyze ONLY this Terraform error output. Do NOT evaluate anything else.
+Respond strictly in this format:
+
+## Why It Occurred
+Explain in 2-3 sentences why this error occurred.
+
+## Solution 1 (Best Practice)
+Provide the first industry best practice solution.
+
+## Solution 2 (Alternative Best Practice)
+Provide the second alternative solution.
+
+Here is the Terraform error:
+$ERROR_LOG" 2>/dev/null)
+
+          if [ -z "$ANALYSIS" ]; then
+            ANALYSIS="Copilot CLI did not return a response. Check that COPILOT_PAT has an active Copilot subscription."
+          fi
+
+          echo "## Copilot Error Analysis" >> $GITHUB_STEP_SUMMARY
+          echo "$ANALYSIS" >> $GITHUB_STEP_SUMMARY
 
   approval:
     name: Awaiting Manual Approval
@@ -135,7 +195,7 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           ERROR_LOG=$(cat /tmp/tf_apply.log 2>/dev/null \
-            | grep -A5 -E "(Error|error|╷)" \
+            | grep -A5 -E "(Error|error|\u2577)" \
             | head -80)
 
           echo "## Terraform Apply Error Output" >> $GITHUB_STEP_SUMMARY
