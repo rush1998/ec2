@@ -75,15 +75,32 @@ jobs:
 
       - name: Evaluate Terraform logs with Copilot
         if: always()
-        working-directory: /tmp
         run: |
-          echo "Reading logs from /tmp/tf_validate.log and /tmp/tf_plan.log"
-          LOG="$(cat /tmp/tf_validate.log /tmp/tf_plan.log 2>/dev/null || true)"
-          printf '%s\n' "$LOG" | head -n 40
-          copilot \
-            --prompt "Analyze these Terraform CI logs. Identify the errors, root cause, and exact fix. Output plain text only.
+          LOG="$(cat /tmp/tf_init.log /tmp/tf_validate.log /tmp/tf_plan.log 2>/dev/null || true)"
+
+          echo "──────────────────────────────────────────"
+          echo "🤖 GitHub Copilot CLI — Terraform Analysis"
+          echo "──────────────────────────────────────────"
+
+          # Capture AND print to console at the same time
+          COPILOT_OUTPUT=$(copilot \
+            --no-ask-user \
+            --allow-all-tools \
+            -p "You are a Terraform and GitHub Actions expert.
+          Analyze the following Terraform CI pipeline logs.
+          1. List every error found.
+          2. Explain the root cause of each error.
+          3. Provide the exact Terraform code fix for each error.
+          Output plain text only. Be concise.
 
           Logs:
-          $LOG" \
-                --no-ask-user \
-                --silent
+          $LOG" 2>&1 | tee /dev/stderr)
+
+          echo "──────────────────────────────────────────"
+          echo "✅ Copilot analysis complete"
+
+          # Write to GitHub Actions Step Summary (visible in the workflow UI)
+          echo "## 🤖 Copilot Terraform Analysis" >> $GITHUB_STEP_SUMMARY
+          echo '```' >> $GITHUB_STEP_SUMMARY
+          echo "$COPILOT_OUTPUT" >> $GITHUB_STEP_SUMMARY
+          echo '```' >> $GITHUB_STEP_SUMMARY
