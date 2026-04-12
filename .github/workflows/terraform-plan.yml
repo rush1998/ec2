@@ -33,19 +33,59 @@ jobs:
           terraform_version: 1.7.0
 
       - name: Terraform Init
-        run: terraform init
+        id: init
+        run: terraform init 2>&1 | tee /tmp/tf_init.log
 
       - name: Terraform Validate
-        run: terraform validate
+        id: validate
+        run: terraform validate 2>&1 | tee /tmp/tf_validate.log
 
       - name: Terraform Plan
-        run: terraform plan -no-color -out=tfplan
+        id: plan
+        run: terraform plan -no-color -out=tfplan 2>&1 | tee /tmp/tf_plan.log
 
       - name: Upload Plan Artifact
+        if: success()
         uses: actions/upload-artifact@v4
         with:
           name: tfplan
           path: terraform/tfplan
+
+      # Runs ONLY when any step above fails
+      - name: Setup GitHub Copilot
+        if: failure()
+        uses: actions/setup-copilot@v0
+        with:
+          version: "latest"
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Copilot — Analyze Terraform Error
+        if: failure()
+        run: |
+          # Collect only the error output from whichever terraform step failed
+          ERROR_LOG=$(cat /tmp/tf_init.log /tmp/tf_validate.log /tmp/tf_plan.log 2>/dev/null | grep -E "Error:|error:|╷|│|╵" | tail -50)
+
+          echo "### Terraform Error Output" >> $GITHUB_STEP_SUMMARY
+          echo '```' >> $GITHUB_STEP_SUMMARY
+          echo "$ERROR_LOG" >> $GITHUB_STEP_SUMMARY
+          echo '```' >> $GITHUB_STEP_SUMMARY
+
+          copilot chat \
+            --model gpt-4o \
+            --prompt "You are a senior DevOps engineer. I will give you ONLY the error output from a Terraform pipeline. 
+            Do NOT evaluate anything other than the error block below.
+            From this error:
+            1. Explain in 2-3 sentences WHY this error occurred.
+            2. Provide EXACTLY 2 solutions following industry best practices.
+            Format your response as:
+            ## Why It Occurred
+            <explanation>
+            ## Solution 1 (Best Practice)
+            <solution>
+            ## Solution 2 (Alternative Best Practice)
+            <solution>
+            Here is the Terraform error output:
+            $ERROR_LOG" >> $GITHUB_STEP_SUMMARY
 
   approval:
     name: Awaiting Manual Approval
@@ -94,4 +134,40 @@ jobs:
           path: terraform/
 
       - name: Terraform Apply
-        run: terraform apply -auto-approve tfplan
+        id: apply
+        run: terraform apply -auto-approve tfplan 2>&1 | tee /tmp/tf_apply.log
+
+      # Runs ONLY when apply fails
+      - name: Setup GitHub Copilot
+        if: failure()
+        uses: actions/setup-copilot@v0
+        with:
+          version: "latest"
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Copilot — Analyze Terraform Apply Error
+        if: failure()
+        run: |
+          ERROR_LOG=$(cat /tmp/tf_apply.log 2>/dev/null | grep -E "Error:|error:|╷|│|╵" | tail -50)
+
+          echo "### Terraform Apply Error Output" >> $GITHUB_STEP_SUMMARY
+          echo '```' >> $GITHUB_STEP_SUMMARY
+          echo "$ERROR_LOG" >> $GITHUB_STEP_SUMMARY
+          echo '```' >> $GITHUB_STEP_SUMMARY
+
+          copilot chat \
+            --model gpt-4o \
+            --prompt "You are a senior DevOps engineer. I will give you ONLY the error output from a Terraform pipeline. 
+            Do NOT evaluate anything other than the error block below.
+            From this error:
+            1. Explain in 2-3 sentences WHY this error occurred.
+            2. Provide EXACTLY 2 solutions following industry best practices.
+            Format your response as:
+            ## Why It Occurred
+            <explanation>
+            ## Solution 1 (Best Practice)
+            <solution>
+            ## Solution 2 (Alternative Best Practice)
+            <solution>
+            Here is the Terraform error output:
+            $ERROR_LOG" >> $GITHUB_STEP_SUMMARY
