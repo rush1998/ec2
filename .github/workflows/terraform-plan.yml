@@ -65,10 +65,9 @@ jobs:
 
       - name: Copilot Terraform Analysis
         if: always()
-        run: |
-          gh auth refresh --scopes repo,read:org  
-          gh auth status 
-          gh auth status --show-token
+        run: | 
+          echo "$COPILOT_GITHUB_TOKEN" | gh auth login --with-token
+          gh auth status || true
           echo "════════════════════════════════════════"
           echo "   🤖 GitHub Copilot CLI — Terraform Analysis"
           echo "════════════════════════════════════════"
