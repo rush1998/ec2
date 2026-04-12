@@ -102,16 +102,21 @@ jobs:
           fi
 
           echo "════════════════════════════════════════"
-          echo "   🤖 Copilot Analysis"
+          echo "   🤖 GitHub Copilot CLI — Terraform Analysis"
           echo "════════════════════════════════════════"
+          echo ""
+          echo "📂 Log files passed to Copilot:"
+          echo "   → /tmp/tf_validate.log"
+          echo "   → /tmp/tf_plan.log"
+          echo ""
+          echo "⏳ Running Copilot analysis... please wait"
+          echo "────────────────────────────────────────"
 
-          # Build log content from both files
-          LOG="$(cat /tmp/tf_validate.log /tmp/tf_plan.log 2>/dev/null || true)"
-
-          # Run Copilot non-interactively against the logs
           copilot \
+            --add-dir=/tmp \
             --no-ask-user \
             --allow-all-tools \
+            --allow-all-paths \
             -p "You are a Terraform expert.
           Analyze these Terraform CI logs.
           1. List every error found.
@@ -120,6 +125,18 @@ jobs:
           Output plain text only. Be concise.
 
           Logs:
-          $LOG"
+          $LOG" 2>&1 | tee /tmp/copilot_output.txt
 
+          echo "────────────────────────────────────────"
+          echo ""
+          echo "📄 Copilot raw output saved to: /tmp/copilot_output.txt"
+          echo "📊 Output size: $(wc -l < /tmp/copilot_output.txt) lines"
+          echo ""
+          echo "✅ Copilot analysis complete"
           echo "════════════════════════════════════════"
+
+          # Write to Step Summary
+          echo "## 🤖 Copilot Terraform Analysis" >> $GITHUB_STEP_SUMMARY
+          echo '```' >> $GITHUB_STEP_SUMMARY
+          cat /tmp/copilot_output.txt >> $GITHUB_STEP_SUMMARY
+          echo '```' >> $GITHUB_STEP_SUMMARY
