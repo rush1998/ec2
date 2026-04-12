@@ -60,7 +60,7 @@ jobs:
         uses: actions/setup-copilot@v0
         with:
           # This is the non-interactive auth — no login step needed
-          github-token: ${{ secrets.COPILOT_TOKEN }}
+          github-token: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Verify Copilot auth
         if: always()
@@ -68,22 +68,42 @@ jobs:
           copilot version
           echo "Token present: $([ -n "$COPILOT_GITHUB_TOKEN" ] && echo ✅ YES || echo ❌ NO)"
       
-      - name: Echo Copilot login details
+      - name: Verify Copilot auth
+        if: always()
+        run: |
+          copilot version
+          echo "Token present: $([ -n "$COPILOT_GITHUB_TOKEN" ] && echo ✅ YES || echo ❌ NO)"
+
+      # ── Non-interactive login — all three methods applied together ────
+      - name: Login to GitHub Copilot CLI (non-interactive)
         if: always()
         env:
-          COPILOT_GITHUB_TOKEN: ${{ secrets.COPILOT_TOKEN }}
+          COPILOT_GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           echo "════════════════════════════════════════"
-          echo "       🔐 Copilot Auth Details"
-          echo "════════════════════════════════════════"
-          echo "Runner user     : $(whoami)"
-          echo "Runner hostname : $(hostname)"
+          echo "   🔐 GitHub Copilot CLI — Login Check"
           echo "════════════════════════════════════════"
 
+          # Method 1: gh auth login --with-token (reads PAT from stdin, no browser, no prompt)
+          echo "${{ secrets.GITHUB_TOKEN }}" | gh auth login --with-token
+          echo "✅ gh auth login complete"
+
+          # Method 2: confirm gh auth status (proves it worked)
+          gh auth status
+
+          # Method 3: confirm COPILOT_GITHUB_TOKEN is set (Copilot CLI checks this first)
+          echo "COPILOT_GITHUB_TOKEN : $([ -n "$COPILOT_GITHUB_TOKEN" ] && echo ✅ SET || echo ❌ NOT SET)"
+          echo "GH_TOKEN             : $([ -n "$GH_TOKEN" ] && echo ✅ SET || echo ❌ NOT SET)"
+          echo "Token prefix         : $(echo "$COPILOT_GITHUB_TOKEN" | cut -c1-12)..."
+          echo "Token type           : $(echo "$COPILOT_GITHUB_TOKEN" | grep -q '^github_pat_' && echo ✅ Fine-grained PAT || echo ⚠️  Not a fine-grained PAT)"
+
+          echo "════════════════════════════════════════"
+           
       - name: Evaluate Terraform logs with Copilot
         if: always()
         env:
-          COPILOT_GITHUB_TOKEN: ${{ secrets.COPILOT_TOKEN }}
+          COPILOT_GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           LOG="$(cat /tmp/tf_init.log /tmp/tf_validate.log /tmp/tf_plan.log 2>/dev/null || true)"
 
