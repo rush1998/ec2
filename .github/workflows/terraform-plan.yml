@@ -37,7 +37,7 @@ jobs:
         run: terraform init 2>&1 | tee /tmp/tf_init.log
         continue-on-error: true
 
-      # ✅ continue-on-error required so Copilot steps always run
+      # ✅ continue-on-error restored — required so Copilot steps always run
       - name: Terraform Validate
         id: validate
         run: terraform validate -no-color 2>&1 | tee /tmp/tf_validate.log
@@ -55,8 +55,8 @@ jobs:
           name: tf-logs
           path: /tmp/tf_*.log
 
-      # ✅ COPILOT_TOKEN must be a fine-grained PAT with GitHub Copilot Chat permission
-      # secrets.GITHUB_TOKEN (ghs_) does NOT have Copilot API access
+      # ✅ Use secrets.COPILOT_TOKEN (fine-grained PAT with Copilot Requests permission)
+      # secrets.GITHUB_TOKEN = ghs_ token = no Copilot API access = 0 lines output
       - name: Setup Copilot CLI
         if: always()
         uses: actions/setup-copilot@v0
@@ -69,17 +69,28 @@ jobs:
           COPILOT_GITHUB_TOKEN: ${{ secrets.COPILOT_TOKEN }}
         run: |
           echo "════════════════════════════════════════"
-          echo "   🔐 GitHub Copilot CLI — Auth Check"
+          echo "   🔐 GitHub Copilot CLI — Login Check"
           echo "════════════════════════════════════════"
 
-          # ✅ No gh auth login — env var is all Copilot needs
-          echo "Token present : $([ -n "$COPILOT_GITHUB_TOKEN" ] && echo ✅ SET || echo ❌ NOT SET — add COPILOT_TOKEN secret)"
-          echo "Token prefix  : $(echo "$COPILOT_GITHUB_TOKEN" | cut -c1-12)..."
-          echo "Token type    : $(echo "$COPILOT_GITHUB_TOKEN" | grep -q '^github_pat_' \
-            && echo '✅ Fine-grained PAT — Copilot API access OK' \
-            || echo '❌ NOT a fine-grained PAT — create one at github.com/settings/tokens')"
-          copilot version
-          echo "════════════════════════════════════════"
+          # Unset GH_TOKEN so gh auth login stores credentials instead of being bypassed
+          unset GH_TOKEN
+          echo "$COPILOT_GITHUB_TOKEN" > mytoken.txt
+          echo "$COPILOT_GITHUB_TOKEN" | gh auth login --with-token < mytoken.txt
+          if [ $? -eq 0 ]; then
+            echo "✅ gh auth login complete"
+          else
+            echo "❌ gh auth login failed"
+            exit 1
+          fi
+
+          gh auth status
+
+          rm -rf mytoken.txt
+
+          # Token type check — must be github_pat_ for Copilot API access
+          echo "Token type: $(echo "$COPILOT_GITHUB_TOKEN" | grep -q '^github_pat_' \
+            && echo '✅ Fine-grained PAT — Copilot API access expected' \
+            || echo '❌ NOT a fine-grained PAT — Copilot will produce 0 lines of output')'"
 
           echo "════════════════════════════════════════"
           echo "   📋 Checking Terraform Log Files"
