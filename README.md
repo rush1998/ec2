@@ -174,6 +174,7 @@ terraform destroy -auto-approve
   accidental state corruption.
 - Use **environment-level secrets** in GitHub for production AWS credentials,
   separate from your repo-level secrets.
+- #
 
 ---
 
