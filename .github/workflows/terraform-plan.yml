@@ -63,6 +63,10 @@ jobs:
         with:
           github-token: ${{ secrets.COPILOT_GITHUB_TOKEN }}
 
+      - name: Check GitHub Auth Status
+        if: always()
+        run: gh auth status
+
       - name: Copilot Terraform Analysis
         if: always()
         run: |
