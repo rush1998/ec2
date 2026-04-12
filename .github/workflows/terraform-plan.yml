@@ -11,11 +11,9 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       id-token: write
-      contents: read
-    # ✅ GH_TOKEN at job level — silences 'add GH_TOKEN' warning for all steps
-    # ℹ️  github.token is auto-generated per run — you never need to find or copy its value
+      contents: write
     env:
-      GH_TOKEN: ${{ github.token }}
+      COPILOT_GITHUB_TOKEN: ${{ secrets.COPILOT_GITHUB_TOKEN }}
     defaults:
       run:
         working-directory: ./terraform
@@ -41,7 +39,6 @@ jobs:
         run: terraform init 2>&1 | tee /tmp/tf_init.log
         continue-on-error: true
 
-      # ✅ continue-on-error required so Copilot steps always run
       - name: Terraform Validate
         id: validate
         run: terraform validate -no-color 2>&1 | tee /tmp/tf_validate.log
@@ -59,59 +56,13 @@ jobs:
           name: tf-logs
           path: /tmp/tf_*.log
 
-      # ✅ COPILOT_TOKEN must be a fine-grained PAT with GitHub Copilot Chat permission
-      # secrets.GITHUB_TOKEN (ghs_) does NOT have Copilot API access
       - name: Setup Copilot CLI
         if: always()
         uses: actions/setup-copilot@v0
-        with:
-          github-token: ${{ secrets.COPILOT_TOKEN }}
 
       - name: Copilot CLI Auth Check & Terraform Analysis
         if: always()
-        env:
-          COPILOT_GITHUB_TOKEN: ${{ secrets.COPILOT_TOKEN }}
         run: |
-          echo "════════════════════════════════════════"
-          echo "   🔐 GitHub Copilot CLI — Auth Check"
-          echo "════════════════════════════════════════"
-
-          # ✅ No gh auth login — COPILOT_GITHUB_TOKEN env var is all Copilot needs
-          echo "Token present : $([ -n "$COPILOT_GITHUB_TOKEN" ] && echo '✅ SET' || echo '❌ NOT SET — add COPILOT_TOKEN secret')"
-          echo "Token prefix  : $(echo "$COPILOT_GITHUB_TOKEN" | cut -c1-12)..."
-          echo "Token type    : $(echo "$COPILOT_GITHUB_TOKEN" | grep -q '^github_pat_' \
-            && echo '✅ Fine-grained PAT — Copilot API access OK' \
-            || echo '❌ NOT a fine-grained PAT — create one at github.com/settings/tokens')"
-          copilot version
-          echo "════════════════════════════════════════"
-
-          echo "════════════════════════════════════════"
-          echo "   📋 Checking Terraform Log Files"
-          echo "════════════════════════════════════════"
-
-          VALIDATE_OK=false
-          PLAN_OK=false
-
-          if [ -s /tmp/tf_validate.log ]; then
-            echo "✅ tf_validate.log exists ($(wc -l < /tmp/tf_validate.log) lines)"
-            echo "── Contents ──────────────────────────────"
-            cat /tmp/tf_validate.log
-            VALIDATE_OK=true
-          else
-            echo "❌ tf_validate.log is missing or empty"
-          fi
-
-          echo "──────────────────────────────────────────"
-
-          if [ -s /tmp/tf_plan.log ]; then
-            echo "✅ tf_plan.log exists ($(wc -l < /tmp/tf_plan.log) lines)"
-            echo "── Contents ──────────────────────────────"
-            cat /tmp/tf_plan.log
-            PLAN_OK=true
-          else
-            echo "❌ tf_plan.log is missing or empty"
-          fi
-
           echo "════════════════════════════════════════"
           echo "   🤖 GitHub Copilot CLI — Terraform Analysis"
           echo "════════════════════════════════════════"
@@ -123,19 +74,7 @@ jobs:
           echo "⏳ Running Copilot analysis... please wait"
           echo "────────────────────────────────────────"
 
-          if [ "$VALIDATE_OK" = true ] && [ "$PLAN_OK" = true ]; then
-            echo "✅ Both logs present — passing both to Copilot"
-            LOG="$(cat /tmp/tf_validate.log /tmp/tf_plan.log)"
-          elif [ "$VALIDATE_OK" = true ] && [ "$PLAN_OK" = false ]; then
-            echo "⚠️  Only validate log found — passing validate only"
-            LOG="$(cat /tmp/tf_validate.log)"
-          elif [ "$VALIDATE_OK" = false ] && [ "$PLAN_OK" = true ]; then
-            echo "⚠️  Only plan log found — passing plan only"
-            LOG="$(cat /tmp/tf_plan.log)"
-          else
-            echo "❌ Both logs missing or empty — skipping Copilot analysis"
-            exit 1
-          fi
+          LOG="$(cat /tmp/tf_validate.log /tmp/tf_plan.log)"
 
           copilot \
             --add-dir=/tmp \
