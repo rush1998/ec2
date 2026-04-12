@@ -75,11 +75,9 @@ jobs:
             echo "✅ gh auth login complete"
           else
             echo "❌ gh auth login failed"
-
+          fi
       - name: Evaluate Terraform logs with Copilot
         if: always()
-        env:
-          COPILOT_GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           LOG="$(cat /tmp/tf_init.log /tmp/tf_validate.log /tmp/tf_plan.log 2>/dev/null || true)"
 
