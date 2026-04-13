@@ -1,4 +1,4 @@
-name: Terraform Plan & Apply
+name: github-copilot-cli
 
 on:
   push:
@@ -6,11 +6,16 @@ on:
       - 'feature/**'
 
 jobs:
-  terraform-plan:
-    name: Terraform Plan
+  terraform-initplan:
+    name: terraform-initplan
     runs-on: ubuntu-latest
     env:
-      GH_TOKEN: ${{ secrets.COPILOT_GITHUB_TOKEN }}  # ✅ required for gh auth status and gh CLI commands
+      GH_TOKEN: ${{ secrets.COPILOT_GITHUB_TOKEN }}
+      AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+      AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+      AWS_REGION: ${{ secrets.AWS_REGION }}
+      TF_STATE_BUCKET: ${{ secrets.TF_STATE_BUCKET }}
+      TF_STATE_KEY: ${{ secrets.TF_STATE_KEY }}
     defaults:
       run:
         working-directory: ./terraform
@@ -22,9 +27,9 @@ jobs:
       - name: Configure AWS Credentials
         uses: aws-actions/configure-aws-credentials@v4
         with:
-          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
-          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          aws-region: us-east-1
+          aws-access-key-id: ${{ env.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ env.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ env.AWS_REGION }}
 
       - name: Setup Terraform
         uses: hashicorp/setup-terraform@v3
@@ -33,7 +38,13 @@ jobs:
 
       - name: Terraform Init
         id: init
-        run: terraform init 2>&1 | tee /tmp/tf_init.log
+        run: |
+          terraform init \
+            -backend-config="bucket=${{ env.TF_STATE_BUCKET }}" \
+            -backend-config="key=${{ env.TF_STATE_KEY }}" \
+            -backend-config="region=${{ env.AWS_REGION }}" \
+            -backend-config="encrypt=true" \
+            2>&1 | tee /tmp/tf_init.log
         continue-on-error: true
 
       - name: Terraform Validate
@@ -60,15 +71,18 @@ jobs:
           echo "   🤖 GitHub Copilot CLI — Terraform Analysis"
           echo "════════════════════════════════════════"
 
-          cat /tmp/tf_validate.log /tmp/tf_plan.log > /tmp/copolit_logs.txt 2>/dev/null
+          cat /tmp/tf_validate.log /tmp/tf_plan.log > /tmp/copilot_logs.txt 2>/dev/null
 
-          LOG_CONTENT="$(cat /tmp/copolit_logs.txt)"
-    
+          LOG_CONTENT="$(cat /tmp/copilot_logs.txt)"
+
           echo "⏳ Running Copilot analysis... please wait"
           echo "────────────────────────────────────────"
 
           copilot \
-            --plugin-dir=/tmp/copolit_logs.txt \
+            --model=gpt-4.1 \
+            --no-color \
+            --silent \
+            --allow-all-tools \
             -p "You are a Terraform expert.
           Analyze these Terraform CI logs:
 
@@ -84,7 +98,7 @@ jobs:
           echo '```' >> $GITHUB_STEP_SUMMARY
           cat /tmp/copilot_output.txt >> $GITHUB_STEP_SUMMARY
           echo '```' >> $GITHUB_STEP_SUMMARY
-     
+
       # ✅ Hard fail LAST — after Copilot has run
       - name: Fail if Terraform errored
         if: >
