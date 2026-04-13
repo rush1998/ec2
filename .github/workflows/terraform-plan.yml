@@ -68,7 +68,7 @@ jobs:
 
           cat /tmp/tf_validate.log /tmp/tf_plan.log > /tmp/copolit_logs.txt
 
-          LOG_CONTENT="$(cat /tmp/copolit_logs.log)"
+          LOG_CONTENT="$(cat /tmp/copolit_logs.txt)"
           echo "📋 Log content to analyze:"
           echo "$LOG_CONTENT"
     
