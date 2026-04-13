@@ -61,6 +61,7 @@ jobs:
         if: always()
         working-directory: /tmp
         run: | 
+          export PATH="/opt/hostedtoolcache/copilot/bin:$PATH"
           echo "════════════════════════════════════════"
           echo "   🤖 GitHub Copilot CLI — Terraform Analysis"
           echo "════════════════════════════════════════"
@@ -68,20 +69,25 @@ jobs:
           cat /tmp/tf_validate.log /tmp/tf_plan.log > /tmp/copolit_logs.txt
 
           cat /tmp/copolit_logs.txt
-          pwd
-          ls 
+    
           echo "⏳ Running Copilot analysis... please wait"
           echo "────────────────────────────────────────"
-          copilot -p "check copolit_logs.txt and give me a solution" --allow-tool 'shell(git)'
-          ./generate-prompt.sh | copilot
+
+          copilot -p "You are a Terraform expert.
+          Analyze these Terraform CI logs:
+
+          $LOG_CONTENT
+
+          1. List every error found.
+          2. Explain the root cause of each error.
+          3. Provide the exact Terraform code fix.
+          Output plain text only. Be concise." 2>&1 | tee /tmp/copilot_output.txt
           echo "────────────────────────────────────────"
           echo "📄 Copilot output:"
-          echo "────────────────────────────────────────"
           cat /tmp/copilot_output.txt
-          echo "────────────────────────────────────────"
           echo "📊 Output size: $(wc -l < /tmp/copilot_output.txt) lines"
-          echo "✅ Copilot analysis complete"
           echo "════════════════════════════════════════"
+     
 
       # ✅ Hard fail LAST — after Copilot has run
       - name: Fail if Terraform errored
