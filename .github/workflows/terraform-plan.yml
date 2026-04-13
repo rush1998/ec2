@@ -71,6 +71,11 @@ jobs:
           echo "────────────────────────────────────────"
 
           copilot \
+            --model=gpt-4o \
+            --effort=low \
+            --no-color \
+            --silent \
+            --allow-all-tools \
             -p "You are a Terraform expert.
           Analyze these Terraform CI logs:
 
