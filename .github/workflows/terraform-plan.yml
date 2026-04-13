@@ -57,10 +57,6 @@ jobs:
         if: always()
         uses: actions/setup-copilot@v0
 
-      - name: Check GitHub Auth Status
-        if: always()
-        run: gh auth status
-
       - name: Copilot Terraform Analysis
         if: always()
         run: | 
@@ -73,14 +69,14 @@ jobs:
 
           echo "⏳ Running Copilot analysis... please wait"
           echo "────────────────────────────────────────"
-
+          pwd
           copilot \
-            --add-dir=/tmp \
+            --banner \
             --no-ask-user \
-            --allow-all-tools \
-            --allow-all-paths \
+            --allow-all \
+            --config-dir=/tmp \
             -p "You are a Terraform expert.
-          Read the file /tmp/copolit_logs.log.
+          Read the file copolit_logs.log.
           1. List every error found.
           2. Explain the root cause of each error.
           3. Provide the exact Terraform code fix.
