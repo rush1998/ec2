@@ -57,15 +57,12 @@ jobs:
         if: always()
         uses: actions/setup-copilot@v0
       - run: |
-          echo "════════════════════════════════════════"
           echo "   🤖 GitHub Copilot CLI — Terraform Analysis"
           echo "════════════════════════════════════════"
 
-          cat /tmp/tf_validate.log /tmp/tf_plan.log > /tmp/copolit_logs.txt
+          cat /tmp/tf_validate.log /tmp/tf_plan.log > /tmp/copolit_logs.txt 2>/dev/null
 
           LOG_CONTENT="$(cat /tmp/copolit_logs.txt)"
-          echo "📋 Log content to analyze:"
-          echo "$LOG_CONTENT"
     
           echo "⏳ Running Copilot analysis... please wait"
           echo "────────────────────────────────────────"
@@ -78,12 +75,9 @@ jobs:
           $LOG_CONTENT
 
           1. List every error found.
-          2. Explain the root cause of each error.
-          3. Provide the exact Terraform code fix.
+          2. Explain the root cause of each error in one line only.
+          3. Provide just the terraform code fix.
           Output plain text only. Be concise." 2>&1 | tee /tmp/copilot_output.txt
-          echo "────────────────────────────────────────"
-          echo "📄 Copilot output:"
-          cat /tmp/copilot_output.txt
           echo "📊 Output size: $(wc -l < /tmp/copilot_output.txt) lines"
           echo "════════════════════════════════════════"
      
