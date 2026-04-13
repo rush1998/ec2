@@ -59,6 +59,7 @@ jobs:
 
       - name: Copilot Terraform Analysis
         if: always()
+        working-directory: /tmp
         run: | 
           pwd
           echo "════════════════════════════════════════"
