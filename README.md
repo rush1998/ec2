@@ -2,6 +2,8 @@
 
 Deploys an AWS EC2 instance (Amazon Linux 2023, `t2.micro`) via Terraform, automated through GitHub Actions. Plan runs on feature branches; apply runs on `main` with a manual approval gate.
 
+> 💡 **Purpose.** This project demonstrates how to integrate the [`setup-copilot-cli`](https://github.com/marketplace/actions/setup-copilot-cli) GitHub Action into a Terraform CI pipeline, using GitHub Copilot CLI (`gpt-4.1`) to automatically analyse IaC logs and surface errors directly in the GitHub Actions step summary.
+
 ---
 
 ## 📁 Project Structure
@@ -68,7 +70,7 @@ push to feature/**
   ├── Configure AWS Credentials
   ├── Terraform Init → Validate → Plan
   ├── Upload logs as artifact
-  └── IaC Code Analysis via Copilot (gpt-4.1)
+  └── IaC Code Analysis via Copilot (gpt-4.1)  ← setup-copilot-cli
         │
         ▼ open PR → merge to main
   terraform-apply.yml
