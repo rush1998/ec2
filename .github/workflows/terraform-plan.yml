@@ -61,7 +61,6 @@ jobs:
         if: always()
         working-directory: /tmp
         run: | 
-          pwd
           echo "════════════════════════════════════════"
           echo "   🤖 GitHub Copilot CLI — Terraform Analysis"
           echo "════════════════════════════════════════"
@@ -70,14 +69,13 @@ jobs:
 
           echo "⏳ Running Copilot analysis... please wait"
           echo "────────────────────────────────────────"
-          pwd
+
           copilot \
-            --banner \
+            --add-dir=/tmp \
             --no-ask-user \
-            --allow-all \
-            --config-dir=/tmp \
+            --allow-all-paths \
             -p "You are a Terraform expert.
-          Read the file copolit_logs.log.
+          Read the file /tmp/copolit_logs.log.
           1. List every error found.
           2. Explain the root cause of each error.
           3. Provide the exact Terraform code fix.
