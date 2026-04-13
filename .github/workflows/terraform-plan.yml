@@ -71,7 +71,7 @@ jobs:
           echo "────────────────────────────────────────"
 
           copilot \
-            --model=gpt-4o \
+            --model=gpt-4.1 \
             --effort=low \
             --no-color \
             --silent \
