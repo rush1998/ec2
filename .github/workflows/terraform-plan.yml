@@ -61,6 +61,15 @@ jobs:
         if: always()
         working-directory: /tmp
         run: | 
+          echo "=== /tmp contents ==="
+          ls -lh /tmp/*.log
+          echo ""
+          echo "=== tf_validate.log ==="
+          cat /tmp/tf_validate.log
+
+          echo ""
+          echo "=== tf_plan.log ==="
+          cat /tmp/tf_plan.log
           echo "════════════════════════════════════════"
           echo "   🤖 GitHub Copilot CLI — Terraform Analysis"
           echo "════════════════════════════════════════"
