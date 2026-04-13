@@ -66,16 +66,18 @@ jobs:
           echo "════════════════════════════════════════"
 
           cat /tmp/tf_validate.log /tmp/tf_plan.log > /tmp/copolit_logs.txt
-          cat /tmp/copolit_logs.txt
 
+          cat /tmp/copolit_logs.txt
+          pwd
+          ls 
           echo "⏳ Running Copilot analysis... please wait"
           echo "────────────────────────────────────────"
 
-          copilot \
-            --no-ask-user \
-            --allow-all-paths \
-            --prompt=You are a Terraform expert.
-          Read the file /tmp/copolit_logs.txt
+          copilot -p "You are a Terraform expert.
+          Analyze these Terraform CI logs:
+
+          copolit_logs.txt
+
           1. List every error found.
           2. Explain the root cause of each error.
           3. Provide the exact Terraform code fix.
