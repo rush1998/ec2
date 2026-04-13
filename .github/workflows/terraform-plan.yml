@@ -72,8 +72,9 @@ jobs:
           ls 
           echo "⏳ Running Copilot analysis... please wait"
           echo "────────────────────────────────────────"
-
-          copilot -p "You are a Terraform expert Analyze these Terraform CI logs: copolit_logs.txt 1. List every error found.2. Explain the root cause of each error.3. Provide the exact Terraform code fix. Output plain text only. Be concise." 2>&1 | tee /tmp/copilot_output.txt
+          
+          copilot --banner
+          copilot -p -s --yolo  "You are a Terraform expert Analyze these Terraform CI logs: copolit_logs.txt 1. List every error found.2. Explain the root cause of each error.3. Provide the exact Terraform code fix. Output plain text only. Be concise." 2>&1 | tee /tmp/copilot_output.txt
 
           echo "────────────────────────────────────────"
           echo "📄 Copilot output:"
