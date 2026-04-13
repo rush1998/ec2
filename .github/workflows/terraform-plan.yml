@@ -9,9 +9,6 @@ jobs:
   terraform-plan:
     name: Terraform Plan
     runs-on: ubuntu-latest
-    permissions:
-      id-token: write
-      contents: write
     env:
       GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}  # ✅ required for gh auth status and gh CLI commands
     defaults:
