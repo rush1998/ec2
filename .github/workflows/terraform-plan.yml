@@ -80,6 +80,10 @@ jobs:
           Output plain text only. Be concise." 2>&1 | tee /tmp/copilot_output.txt
           echo "📊 Output size: $(wc -l < /tmp/copilot_output.txt) lines"
           echo "════════════════════════════════════════"
+          echo "## 🤖 Copilot Terraform Analysis" >> $GITHUB_STEP_SUMMARY
+          echo '```' >> $GITHUB_STEP_SUMMARY
+          cat /tmp/copilot_output.txt >> $GITHUB_STEP_SUMMARY
+          echo '```' >> $GITHUB_STEP_SUMMARY
      
       # ✅ Hard fail LAST — after Copilot has run
       - name: Fail if Terraform errored
