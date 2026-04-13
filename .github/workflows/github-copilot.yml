@@ -5,6 +5,9 @@ on:
     branches:
       - 'feature/**'
 
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true  # suppress Node.js 20 deprecation warnings
+
 jobs:
   terraform-initplan:
     name: terraform-initplan
@@ -43,6 +46,7 @@ jobs:
         id: init
         run: |
           terraform init \
+            -reconfigure \
             -backend-config="bucket=${{ env.TF_STATE_BUCKET }}" \
             -backend-config="key=${{ env.TF_STATE_KEY }}" \
             -backend-config="region=${{ env.AWS_REGION }}" \
@@ -70,13 +74,23 @@ jobs:
       - name: Setup Copilot CLI
         if: always()
         uses: actions/setup-copilot@v0
-      - run: |
+
+      - name: IaC Code Analysis via Copilot
+        if: always()
+        run: |
           echo "   🤖 GitHub Copilot CLI — Terraform Analysis"
           echo "════════════════════════════════════════"
 
-          cat /tmp/tf_validate.log /tmp/tf_plan.log > /tmp/copilot_logs.txt 2>/dev/null
+          cat /tmp/tf_validate.log /tmp/tf_plan.log > /tmp/copilot_logs.txt 2>/dev/null || true
 
-          LOG_CONTENT="$(cat /tmp/copilot_logs.txt)"
+          LOG_CONTENT="$(cat /tmp/copilot_logs.txt 2>/dev/null || echo '')"
+
+          if [ -z "$LOG_CONTENT" ]; then
+            echo "⚠️  No Terraform logs found — skipping Copilot analysis."
+            echo "## 🤖 Copilot Terraform Analysis" >> "$GITHUB_STEP_SUMMARY"
+            echo "> ⚠️ No logs available. Check that AWS credentials and backend secrets are set correctly." >> "$GITHUB_STEP_SUMMARY"
+            exit 0
+          fi
 
           echo "⏳ Running Copilot analysis... please wait"
           echo "────────────────────────────────────────"
@@ -95,12 +109,13 @@ jobs:
           2. Explain the root cause of each error in one line only.
           3. Provide just the terraform code fix.
           Output plain text only. Be concise." 2>&1 | tee /tmp/copilot_output.txt
+
           echo "📊 Output size: $(wc -l < /tmp/copilot_output.txt) lines"
           echo "════════════════════════════════════════"
-          echo "## 🤖 Copilot Terraform Analysis" >> $GITHUB_STEP_SUMMARY
-          echo '```' >> $GITHUB_STEP_SUMMARY
-          cat /tmp/copilot_output.txt >> $GITHUB_STEP_SUMMARY
-          echo '```' >> $GITHUB_STEP_SUMMARY
+          echo "## 🤖 Copilot Terraform Analysis" >> "$GITHUB_STEP_SUMMARY"
+          echo '```' >> "$GITHUB_STEP_SUMMARY"
+          cat /tmp/copilot_output.txt >> "$GITHUB_STEP_SUMMARY"
+          echo '```' >> "$GITHUB_STEP_SUMMARY"
 
       # ✅ Hard fail LAST — after Copilot has run
       - name: Fail if Terraform errored
