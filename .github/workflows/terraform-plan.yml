@@ -7,7 +7,7 @@ on:
 
 jobs:
   terraform-plan:
-    name: Terraform Plan
+    name: terraform-plan.yml
     runs-on: ubuntu-latest
     env:
       GH_TOKEN: ${{ secrets.COPILOT_GITHUB_TOKEN }}  # ✅ required for gh auth status and gh CLI commands
@@ -56,19 +56,21 @@ jobs:
       - name: Setup Copilot CLI
         if: always()
         uses: actions/setup-copilot@v0
-      - run: |
+
+      - name: IaC Code Analysis via Copilot
+        if: always()
+        run: |
           echo "   🤖 GitHub Copilot CLI — Terraform Analysis"
           echo "════════════════════════════════════════"
 
-          cat /tmp/tf_validate.log /tmp/tf_plan.log > /tmp/copolit_logs.txt 2>/dev/null
+          cat /tmp/tf_validate.log /tmp/tf_plan.log > /tmp/copilot_logs.txt 2>/dev/null
 
-          LOG_CONTENT="$(cat /tmp/copolit_logs.txt)"
-    
+          LOG_CONTENT="$(cat /tmp/copilot_logs.txt)"
+
           echo "⏳ Running Copilot analysis... please wait"
           echo "────────────────────────────────────────"
 
           copilot \
-            --plugin-dir=/tmp/copolit_logs.txt \
             -p "You are a Terraform expert.
           Analyze these Terraform CI logs:
 
@@ -84,7 +86,7 @@ jobs:
           echo '```' >> $GITHUB_STEP_SUMMARY
           cat /tmp/copilot_output.txt >> $GITHUB_STEP_SUMMARY
           echo '```' >> $GITHUB_STEP_SUMMARY
-     
+
       # ✅ Hard fail LAST — after Copilot has run
       - name: Fail if Terraform errored
         if: >
