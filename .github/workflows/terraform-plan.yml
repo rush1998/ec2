@@ -64,6 +64,7 @@ jobs:
       - name: Copilot Terraform Analysis
         if: always()
         run: | 
+          pwd
           echo "════════════════════════════════════════"
           echo "   🤖 GitHub Copilot CLI — Terraform Analysis"
           echo "════════════════════════════════════════"
