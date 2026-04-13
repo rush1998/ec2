@@ -61,10 +61,7 @@ jobs:
       - name: Setup Copilot CLI
         if: always()
         uses: actions/setup-copilot@v0
-
-      - name: IaC Code Analysis via Copilot
-        if: always()
-        run: |
+      - run: |
           echo "   🤖 GitHub Copilot CLI — Terraform Analysis"
           echo "════════════════════════════════════════"
 
