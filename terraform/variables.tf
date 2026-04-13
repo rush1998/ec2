@@ -15,15 +15,3 @@ variable "instance_name" {
   type        = string
   default     = "my-ec2-instance"
 }
-
-variable "backend_bucket" {
-  description = "S3 bucket for Terraform state"
-  type        = string
-  default     = "my-terraform-state-bucket"  # overridden by vars.BACKEND_BUCKET in CI
-}
-
-variable "backend_key" {
-  description = "S3 key for Terraform state"
-  type        = string
-  default     = "ec2/terraform.tfstate"  # overridden by vars.BACKEND_KEY in CI
-}

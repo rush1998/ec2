@@ -38,7 +38,13 @@ jobs:
 
       - name: Terraform Init
         id: init
-        run: terraform init 2>&1 | tee /tmp/tf_init.log
+        run: |
+          terraform init \
+            -backend-config="bucket=${{ env.TF_STATE_BUCKET }}" \
+            -backend-config="key=${{ env.TF_STATE_KEY }}" \
+            -backend-config="region=${{ env.AWS_REGION }}" \
+            -backend-config="encrypt=true" \
+            2>&1 | tee /tmp/tf_init.log
         continue-on-error: true
 
       - name: Terraform Validate
