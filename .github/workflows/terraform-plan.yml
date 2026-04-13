@@ -10,7 +10,7 @@ jobs:
     name: Terraform Plan
     runs-on: ubuntu-latest
     env:
-      GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}  # ✅ required for gh auth status and gh CLI commands
+      GH_TOKEN: ${{ secrets.COPILOT_GITHUB_TOKEN }}  # ✅ required for gh auth status and gh CLI commands
     defaults:
       run:
         working-directory: ./terraform
@@ -56,12 +56,43 @@ jobs:
       - name: Setup Copilot CLI
         if: always()
         uses: actions/setup-copilot@v0
+      - run: |
+          echo "════════════════════════════════════════"
+          echo "   🤖 GitHub Copilot CLI — Terraform Analysis"
+          echo "════════════════════════════════════════"
+
+          cat /tmp/tf_validate.log /tmp/tf_plan.log > /tmp/copolit_logs.txt
+
+          LOG_CONTENT="$(cat /tmp/copolit_logs.txt)"
+          echo "📋 Log content to analyze:"
+          echo "$LOG_CONTENT"
+    
+          echo "⏳ Running Copilot analysis... please wait"
+          echo "────────────────────────────────────────"
+
+          copilot \
+            --plugin-dir=/tmp/copolit_logs.txt \
+            -p "You are a Terraform expert.
+          Analyze these Terraform CI logs:
+
+          $LOG_CONTENT
+
+          1. List every error found.
+          2. Explain the root cause of each error.
+          3. Provide the exact Terraform code fix.
+          Output plain text only. Be concise." 2>&1 | tee /tmp/copilot_output.txt
+          echo "────────────────────────────────────────"
+          echo "📄 Copilot output:"
+          cat /tmp/copilot_output.txt
+          echo "📊 Output size: $(wc -l < /tmp/copilot_output.txt) lines"
+          echo "════════════════════════════════════════"
+          
 
       - name: Copilot Terraform Analysis
         if: always()
         working-directory: /tmp
         run: | 
-          export PATH="/opt/hostedtoolcache/copilot/bin:$PATH"
+        
           echo "════════════════════════════════════════"
           echo "   🤖 GitHub Copilot CLI — Terraform Analysis"
           echo "════════════════════════════════════════"
