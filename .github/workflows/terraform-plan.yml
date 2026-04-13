@@ -75,7 +75,9 @@ jobs:
           echo "⏳ Running Copilot analysis... please wait"
           echo "────────────────────────────────────────"
 
-          copilot -p "You are a Terraform expert.
+          copilot \
+            --plugin-dir=/tmp/copolit_logs.txt \
+            -p "You are a Terraform expert.
           Analyze these Terraform CI logs:
 
           $LOG_CONTENT
