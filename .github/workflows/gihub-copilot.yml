@@ -1,4 +1,4 @@
-name: Terraform Plan & Apply
+name: github-copilot-cli
 
 on:
   push:
@@ -6,8 +6,8 @@ on:
       - 'feature/**'
 
 jobs:
-  terraform-plan:
-    name: terraform-plan.yml
+  terraform-initplan:
+    name: terraform-initplan
     runs-on: ubuntu-latest
     env:
       GH_TOKEN: ${{ secrets.COPILOT_GITHUB_TOKEN }}
