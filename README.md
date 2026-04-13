@@ -55,7 +55,8 @@ ec2/
 - AWS IAM user with `AmazonEC2FullAccess` and `AmazonS3FullAccess`
 - S3 bucket created manually to hold Terraform remote state
 - GitHub repository with Actions enabled
-- A GitHub Copilot licence (Individual, Business, or Enterprise) for the `COPILOT_GITHUB_TOKEN`
+- A GitHub Copilot licence (Individual, Business, or Enterprise)
+- A **Fine-grained PAT** with the `Copilot Requests` permission for `COPILOT_GITHUB_TOKEN` — classic PATs (`ghp_`) are not supported by Copilot CLI
 
 ---
 
@@ -70,7 +71,7 @@ Repo → **Settings → Secrets and variables → Actions → Secrets**:
 | `AWS_REGION` | AWS region, e.g. `us-east-1` |
 | `TF_STATE_BUCKET` | S3 bucket name for Terraform remote state |
 | `TF_STATE_KEY` | S3 key path, e.g. `ec2/terraform.tfstate` |
-| `COPILOT_GITHUB_TOKEN` | GitHub PAT with Copilot scope for CLI auth in CI |
+| `COPILOT_GITHUB_TOKEN` | Fine-grained PAT with `Copilot Requests` permission |
 
 > All six values are secrets — encrypted at rest, masked in logs, and never visible after saving. `backend.tf` contains no hardcoded values; the S3 backend is configured entirely at runtime via `-backend-config` flags.
 
@@ -102,19 +103,30 @@ Repo → **Settings → Secrets and variables → Actions → Secrets**:
 The `IaC Code Analysis via Copilot` step in `github-copilot.yml`:
 
 1. Merges `tf_validate.log` and `tf_plan.log` into a single input
-2. Guards against empty logs — if Terraform steps failed before producing output, writes a clear message to the step summary and exits cleanly
-3. Passes the log content as a prompt to `copilot` using `--model=gpt-4.1`
+2. Guards against empty logs — if Terraform steps failed before producing output, writes a descriptive message to the step summary and exits cleanly with code `0`
+3. Passes the log content as a prompt to `copilot` using `-p` (non-interactive / programmatic mode)
 4. Instructs the model to return errors, root causes, and code fixes in plain text
 5. Writes the full output to `$GITHUB_STEP_SUMMARY` for instant visibility in the Actions UI
 
-### CLI Flags
+### Authentication in CI
 
-| Flag | Reason |
+Copilot CLI resolves its token from environment variables in this order of precedence:
+
+```
+COPILOT_GITHUB_TOKEN  →  GH_TOKEN  →  GITHUB_TOKEN  →  system keychain  →  gh CLI fallback
+```
+
+This workflow sets `COPILOT_GITHUB_TOKEN` explicitly as a job-level env var from the secret, which takes highest priority. The token must be a **Fine-grained PAT** with the `Copilot Requests` permission — classic PATs (`ghp_`) are not supported.
+
+### CLI Flags Used
+
+| Flag | Official Description |
 |---|---|
-| `--model=gpt-4.1` | Non-premium model, 0× multiplier on paid Copilot plans |
-| `--no-color` | Strips ANSI codes for clean step summary rendering |
-| `--silent` | Suppresses usage statistics, outputs only the model response |
-| `--allow-all-tools` | Required for non-interactive CI environments |
+| `--model=gpt-4.1` | Set the AI model. `gpt-4.1` is a non-premium model with a 0× multiplier on paid plans |
+| `--no-color` | Disable all color output — strips ANSI codes for clean step summary rendering |
+| `-s` / `--silent` | Output only the agent response without usage statistics. Useful for scripting with `-p` |
+| `--allow-all-tools` | Allow all tools to run automatically without confirmation. **Required when using the CLI programmatically** (env: `COPILOT_ALLOW_ALL`) |
+| `-p` / `--prompt` | Execute a prompt programmatically (exits after completion) |
 
 ---
 
@@ -123,3 +135,15 @@ The `IaC Code Analysis via Copilot` step in `github-copilot.yml`:
 - **No credentials in code.** All AWS keys, region, bucket name, and state key are GitHub Secrets — encrypted, masked in logs, and inaccessible via the API after saving.
 - **Least-privilege token.** The job’s `permissions` block is scoped to `contents: read` and `pull-requests: write` only.
 - **Partial backend configuration.** `backend.tf` is an empty `backend "s3" {}` shell. The real values are injected at `terraform init` time via `-backend-config` flags sourced from secrets, so no sensitive infrastructure details are committed to the repository.
+- **Token redaction.** The Copilot CLI automatically redacts the values of `COPILOT_GITHUB_TOKEN` and `GH_TOKEN` from all shell and MCP server output by default.
+
+---
+
+## 📚 References
+
+| Resource | Description |
+|---|---|
+| [GitHub Copilot CLI — Command Reference](https://docs.github.com/en/copilot/reference/copilot-cli-reference/cli-command-reference) | Full list of CLI commands, flags, environment variables, and tool permission patterns |
+| [Authenticating GitHub Copilot CLI](https://docs.github.com/en/copilot/how-tos/copilot-cli/set-up-copilot-cli/authenticate-copilot-cli) | Token types, precedence order, OAuth device flow, and CI/CD environment variable auth |
+| [Supported AI Models](https://docs.github.com/en/copilot/reference/ai-models/supported-models) | Model names, premium multipliers, and availability per Copilot plan |
+| [setup-copilot-cli — GitHub Marketplace](https://github.com/marketplace/actions/setup-copilot-cli) | GitHub Action used to install the Copilot CLI binary in CI runners |
