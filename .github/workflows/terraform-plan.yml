@@ -74,7 +74,8 @@ jobs:
           echo "   🤖 GitHub Copilot CLI — Terraform Analysis"
           echo "════════════════════════════════════════"
 
-          cat /tmp/tf_validate.log /tmp/tf_plan.log > /tmp/copolit_logs.log
+          cat /tmp/tf_validate.log /tmp/tf_plan.log > /tmp/copolit_logs.txt
+          cat /tmp/copolit_logs.txt
 
           echo "⏳ Running Copilot analysis... please wait"
           echo "────────────────────────────────────────"
@@ -83,8 +84,8 @@ jobs:
             --add-dir=/tmp \
             --no-ask-user \
             --allow-all-paths \
-            -p "You are a Terraform expert.
-          Read the file /tmp/copolit_logs.log.
+            --p "You are a Terraform expert.
+          Read the file /tmp/copolit_logs.txt
           1. List every error found.
           2. Explain the root cause of each error.
           3. Provide the exact Terraform code fix.
