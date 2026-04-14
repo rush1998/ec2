@@ -76,11 +76,11 @@ jobs:
         with:
           version: latest
       - run: |
-          echo "🤖 GitHub Copilot CLI"
           BRANCH="copilot-fix-${{ github.run_id }}"
           SUMMARY="Fix Terraform error"
           PROMPT=$(cat <<EOF
           You are a Terraform expert working in this checked-out repository.
+          You are also a GitHub expert. Resolve any GitHub error safely (including merge conflicts, branch history issues, and PR creation errors) and continue until push and PR creation succeed.
 
           Execute these Terraform commands in the current working directory and use their output:
           terraform init -reconfigure -backend-config="bucket=${{ env.TF_STATE_BUCKET }}" -backend-config="key=${{ env.TF_STATE_KEY }}" -backend-config="region=${{ env.AWS_REGION }}" -backend-config="encrypt=true"
@@ -107,9 +107,8 @@ jobs:
             --deny-tool='shell(rm)' \
             --deny-tool='shell(gh pr merge)' \
             --allow-all-tools \
-            -p "$PROMPT" 2>&1 | tee /tmp/copilot_output.txt
+            -p "$PROMPT" >/tmp/copilot_output.txt 2>&1
 
-          echo "📊 Output size: $(wc -l < /tmp/copilot_output.txt) lines"
           echo "## 🤖 Copilot Terraform Analysis" >> "$GITHUB_STEP_SUMMARY"
           echo '```' >> "$GITHUB_STEP_SUMMARY"
           cat /tmp/copilot_output.txt >> "$GITHUB_STEP_SUMMARY"
