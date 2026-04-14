@@ -76,10 +76,9 @@ jobs:
         with:
           version: latest
       - run: |
+          echo "🤖 GitHub Copilot CLI"
           BRANCH="copilot-fix-${{ github.run_id }}"
           SUMMARY="Fix Terraform error"
-          echo "🤖 GitHub Copilot CLI"
-
           PROMPT=$(cat <<EOF
           You are a Terraform expert working in this checked-out repository.
 
