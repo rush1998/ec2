@@ -77,8 +77,7 @@ jobs:
         with:
           version: latest
       - run: |
-          echo "   🤖 GitHub Copilot CLI — Terraform Analysis"
-          echo "════════════════════════════════════════"
+          echo "🤖 GitHub Copilot CLI — Terraform Analysis"
 
           cat /tmp/tf_validate.log /tmp/tf_plan.log > /tmp/copilot_logs.txt 2>/dev/null || true
 
@@ -96,8 +95,7 @@ jobs:
 
           copilot \
             --model=gpt-4.1 \
-            --no-color \
-            --silent \
+            --deny-tool='shell(rm)' \
             --allow-all-tools \
             -p "You are a Terraform expert.
           Analyze these Terraform CI logs:
