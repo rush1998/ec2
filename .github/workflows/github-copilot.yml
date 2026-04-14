@@ -76,6 +76,8 @@ jobs:
         with:
           version: latest
       - run: |
+          pwd 
+          ls -la
           BRANCH="copilot-fix-${{ github.run_id }}"
           SUMMARY="Fix Terraform instance_type error"
           echo "🤖 GitHub Copilot CLI"
