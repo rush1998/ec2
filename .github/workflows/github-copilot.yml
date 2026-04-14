@@ -3,7 +3,7 @@ name: github-copilot-cli
 on:
   push:
     branches:
-      - 'feature/**'
+      - 'main'
 
 env:
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
@@ -130,16 +130,13 @@ jobs:
         with:
           version: latest
       - run: |
+          echo "🤖 GitHub Copilot CLI — Auto-fix Terraform"
+          ##════════════════════════════════════════##
+          BRANCH="copilot-fix-${{ github.run_id }}"
+          SUMMARY="Fix Terraform instance_type error"
           copilot \
             --model=gpt-4.1 \
             --allow-all-tools \
             --deny-tool='shell(rm)' \
             --deny-tool='shell(git merge)' \
-            -p "you need to fix the code and push it to the repo.
-          Steps to follow the fix is as follows:
-            1. create a branch name copilot-fix-${GITHUB_RUN_ID}
-            2. fix the code based on the previous analysis and output, and make sure the pipeline will pass after the fix.
-            3. commit the code change with message '$GITHUB_STEP_SUMMARY'
-            4. push the code to copilot-fix-${GITHUB_RUN_ID}
-            5. create a PR from copilot-fix-${GITHUB_RUN_ID} to ${GITHUB_REF_NAME} with title 'Copilot fix: $GITHUB_STEP_SUMMARY' and body 'This PR includes the code changes to fix the Terraform errors found in the previous analysis.'
-            6. if any merger conflicts happen, fix the conflicts and push the code again until the PR is created successfully.
+            -p "Create branch copilot-fix-${{ github.run_id }}. Fix error to make pipeline pass. Commit with message '$SUMMARY'. Push to $BRANCH. Create PR from $BRANCH to ${{ github.ref_name }} titled 'Copilot fix: $SUMMARY' with body 'Fixes Terraform errors'."
