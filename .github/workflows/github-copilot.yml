@@ -26,8 +26,8 @@ jobs:
         working-directory: ./terraform
 
     steps:
-      # - name: Checkout code
-      #   uses: actions/checkout@v4
+      - name: Checkout code
+        uses: actions/checkout@v4
 
       # - name: Configure AWS Credentials
       #   uses: aws-actions/configure-aws-credentials@v4
@@ -76,8 +76,6 @@ jobs:
         with:
           version: latest
       - run: |
-          pwd 
-          ls -la
           BRANCH="copilot-fix-${{ github.run_id }}"
           SUMMARY="Fix Terraform instance_type error"
           echo "🤖 GitHub Copilot CLI"
