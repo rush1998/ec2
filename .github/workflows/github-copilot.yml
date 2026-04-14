@@ -26,49 +26,49 @@ jobs:
         working-directory: ./terraform
 
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
+      # - name: Checkout code
+      #   uses: actions/checkout@v4
 
-      - name: Configure AWS Credentials
-        uses: aws-actions/configure-aws-credentials@v4
-        with:
-          aws-access-key-id: ${{ env.AWS_ACCESS_KEY_ID }}
-          aws-secret-access-key: ${{ env.AWS_SECRET_ACCESS_KEY }}
-          aws-region: ${{ env.AWS_REGION }}
+      # - name: Configure AWS Credentials
+      #   uses: aws-actions/configure-aws-credentials@v4
+      #   with:
+      #     aws-access-key-id: ${{ env.AWS_ACCESS_KEY_ID }}
+      #     aws-secret-access-key: ${{ env.AWS_SECRET_ACCESS_KEY }}
+      #     aws-region: ${{ env.AWS_REGION }}
 
-      - name: Setup Terraform
-        uses: hashicorp/setup-terraform@v3
-        with:
-          terraform_version: 1.7.0
+      # - name: Setup Terraform
+      #   uses: hashicorp/setup-terraform@v3
+      #   with:
+      #     terraform_version: 1.7.0
 
-      - name: Terraform Init
-        id: init
-        run: |
-          terraform init \
-            -reconfigure \
-            -backend-config="bucket=${{ env.TF_STATE_BUCKET }}" \
-            -backend-config="key=${{ env.TF_STATE_KEY }}" \
-            -backend-config="region=${{ env.AWS_REGION }}" \
-            -backend-config="encrypt=true" \
-            2>&1 | tee /tmp/tf_init.log
-        continue-on-error: true
+      # - name: Terraform Init
+      #   id: init
+      #   run: |
+      #     terraform init \
+      #       -reconfigure \
+      #       -backend-config="bucket=${{ env.TF_STATE_BUCKET }}" \
+      #       -backend-config="key=${{ env.TF_STATE_KEY }}" \
+      #       -backend-config="region=${{ env.AWS_REGION }}" \
+      #       -backend-config="encrypt=true" \
+      #       2>&1 | tee /tmp/tf_init.log
+      #   continue-on-error: true
 
-      - name: Terraform Validate
-        id: validate
-        run: terraform validate -no-color 2>&1 | tee /tmp/tf_validate.log
-        continue-on-error: true
+      # - name: Terraform Validate
+      #   id: validate
+      #   run: terraform validate -no-color 2>&1 | tee /tmp/tf_validate.log
+      #   continue-on-error: true
 
-      - name: Terraform Plan
-        id: plan
-        run: terraform plan -no-color -out=tfplan 2>&1 | tee /tmp/tf_plan.log
-        continue-on-error: true
+      # - name: Terraform Plan
+      #   id: plan
+      #   run: terraform plan -no-color -out=tfplan 2>&1 | tee /tmp/tf_plan.log
+      #   continue-on-error: true
 
-      - name: Upload Terraform Logs
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: tf-logs
-          path: /tmp/tf_*.log
+      # - name: Upload Terraform Logs
+      #   if: always()
+      #   uses: actions/upload-artifact@v4
+      #   with:
+      #     name: tf-logs
+      #     path: /tmp/tf_*.log
 
       - name: Setup Copilot CLI
         if: always()
@@ -76,40 +76,21 @@ jobs:
         with:
           version: latest
       - run: |
-          echo "🤖 GitHub Copilot CLI — Terraform Analysis"
-          cat /tmp/tf_validate.log /tmp/tf_plan.log > /tmp/copilot_logs.txt 2>/dev/null || true
-          LOG_CONTENT="$(cat /tmp/copilot_logs.txt 2>/dev/null || echo '')"
-
-          if [ -z "$LOG_CONTENT" ]; then
-            echo "⚠️  No Terraform logs found — skipping Copilot analysis."
-            echo "## 🤖 Copilot Terraform Analysis" >> "$GITHUB_STEP_SUMMARY"
-            echo "> ⚠️ No logs available. Check that AWS credentials and backend secrets are set correctly." >> "$GITHUB_STEP_SUMMARY"
-            exit 0
-          fi
-
-          echo "⏳ Running Copilot analysis... please wait"
+          BRANCH="copilot-fix-${{ github.run_id }}"
+          SUMMARY="Fix Terraform instance_type error"
+          echo "🤖 GitHub Copilot CLI"
           copilot \
             --model=gpt-4.1 \
             --deny-tool='shell(rm)' \
             --allow-all-tools \
             -p "You are a Terraform expert.
-          Analyze these Terraform CI logs:
-
-          $LOG_CONTENT
+          perform terraform init, validate, and plan on the current codebase. Analyze the output for errors. For each error found:
 
           1. List every error found.
           2. Explain the root cause of each error in one line only.
           3. Provide just the terraform code fix.
-          Output plain text only. Be concise." 2>&1 | tee /tmp/copilot_output.txt
-          
-          echo "🤖 GitHub Copilot CLI — Auto-fix Terraform"
-          BRANCH="copilot-fix-${{ github.run_id }}"
-          SUMMARY="Fix Terraform instance_type error"
-          copilot \
-            --model=gpt-4.1 \
-            --allow-all-tools \
-            --deny-tool='shell(rm)' \
-            -p "Create branch copilot-fix-${{ github.run_id }}. Fix error to make pipeline pass. Commit with message '$SUMMARY'. Push to $BRANCH. Create PR from $BRANCH to ${{ github.ref_name }} titled 'Copilot fix: $SUMMARY' with body 'Fixes Terraform errors'."
+          Output plain text only. Be concise.
+          Create branch copilot-fix-${{ github.run_id }}. Fix error to make pipeline pass. Commit with message '$SUMMARY'. Push to $BRANCH. Create PR from $BRANCH to ${{ github.ref_name }} titled 'Copilot fix: $SUMMARY' with body 'Fixes Terraform errors'."
 
           echo "📊 Output size: $(wc -l < /tmp/copilot_output.txt) lines"
           echo "════════════════════════════════════════"
