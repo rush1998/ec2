@@ -96,6 +96,7 @@ jobs:
           6. Commit with message: $SUMMARY
           7. Push to branch $BRANCH.
           8. Create a PR from $BRANCH to ${{ github.ref_name }} titled: Copilot fix: $SUMMARY and body: Fixes Terraform errors.
+          9. Do not merge the PR.
 
           Output plain text only. Be concise.
           EOF
@@ -104,6 +105,7 @@ jobs:
           copilot \
             --model=gpt-4.1 \
             --deny-tool='shell(rm)' \
+            --deny-tool='shell(gh pr merge)' \
             --allow-all-tools \
             -p "$PROMPT" 2>&1 | tee /tmp/copilot_output.txt
 
