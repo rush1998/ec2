@@ -76,6 +76,7 @@ jobs:
         with:
           version: latest
       - run: |
+          echo "## 🧑‍💻 Copilot is running ##"
           BRANCH="copilot-fix-${{ github.run_id }}"
           SUMMARY="Fix Terraform error"
           PROMPT=$(cat <<EOF
@@ -109,7 +110,7 @@ jobs:
             --allow-all-tools \
             -p "$PROMPT" >/tmp/copilot_output.txt 2>&1
 
-          echo "## 🤖 Copilot Terraform Analysis" >> "$GITHUB_STEP_SUMMARY"
+          echo "🤖 Copilot Terraform Analysis" >> "$GITHUB_STEP_SUMMARY"
           echo '```' >> "$GITHUB_STEP_SUMMARY"
           cat /tmp/copilot_output.txt >> "$GITHUB_STEP_SUMMARY"
           echo '```' >> "$GITHUB_STEP_SUMMARY"
