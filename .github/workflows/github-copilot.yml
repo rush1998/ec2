@@ -12,7 +12,7 @@ env:
   AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
   AWS_REGION: ${{ secrets.AWS_REGION }}
   TF_STATE_BUCKET: ${{ secrets.TF_STATE_BUCKET }}
-  TF_STATE_KEY: ${{ secrets.TF_STATE_KEY }}# suppress Node.js 20 deprecation warnings
+  TF_STATE_KEY: ${{ secrets.TF_STATE_KEY }}
 
 jobs:
   terraform-initplan:
@@ -74,10 +74,9 @@ jobs:
       - name: Setup Copilot CLI
         if: always()
         uses: actions/setup-copilot@v0
-
-      - name: IaC Code Analysis via Copilot
-        if: always()
-        run: |
+        with:
+          version: latest
+      - run: |
           echo "   🤖 GitHub Copilot CLI — Terraform Analysis"
           echo "════════════════════════════════════════"
 
@@ -124,3 +123,18 @@ jobs:
           steps.validate.outcome == 'failure' ||
           steps.plan.outcome == 'failure'
         run: exit 1
+
+      - name: Fix the pipeline and push the code 
+        if: always()
+        uses: actions/setup-copilot@v0
+        with:
+          version: latest
+      - run: |
+          copilot \
+            --model=gpt-4.1 \
+            --no-color \
+            --silent \
+            --allow-all-tools \
+            --deny-tool='shell(rm)' \
+            -p "you need to fix the code and push it to the branch. in which this pipleine is running."
+        
