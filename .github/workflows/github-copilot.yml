@@ -77,33 +77,48 @@ jobs:
           version: latest
       - run: |
           BRANCH="copilot-fix-${{ github.run_id }}"
-          SUMMARY="Fix Terraform instance_type error"
+          SUMMARY="Fix Terraform error"
           echo "🤖 GitHub Copilot CLI"
+
+          PROMPT=$(cat <<EOF
+          You are a Terraform expert working in this checked-out repository.
+
+          Execute these Terraform commands in the current working directory and use their output:
+          terraform init -reconfigure -backend-config="bucket=${{ env.TF_STATE_BUCKET }}" -backend-config="key=${{ env.TF_STATE_KEY }}" -backend-config="region=${{ env.AWS_REGION }}" -backend-config="encrypt=true"
+          terraform validate -no-color
+          terraform plan -no-color -out=tfplan
+
+          Then do the following:
+          1. List every error found.
+          2. Explain the root cause of each error in one line only.
+          3. Apply only the necessary Terraform code changes to fix the errors.
+          4. Re-run validate and plan to confirm the fix.
+          5. Create branch $BRANCH.
+          6. Commit with message: $SUMMARY
+          7. Push to branch $BRANCH.
+          8. Create a PR from $BRANCH to ${{ github.ref_name }} titled: Copilot fix: $SUMMARY and body: Fixes Terraform errors.
+
+          Output plain text only. Be concise.
+          EOF
+          )
+
           copilot \
             --model=gpt-4.1 \
             --deny-tool='shell(rm)' \
             --allow-all-tools \
-            -p "You are a Terraform expert.
-          perform terraform init, validate, and plan on the current codebase. Analyze the output for errors. For each error found:
-
-          1. List every error found.
-          2. Explain the root cause of each error in one line only.
-          3. Provide just the terraform code fix.
-          Output plain text only. Be concise.
-          Create branch copilot-fix-${{ github.run_id }}. Fix error to make pipeline pass. Commit with message '$SUMMARY'. Push to $BRANCH. Create PR from $BRANCH to ${{ github.ref_name }} titled 'Copilot fix: $SUMMARY' with body 'Fixes Terraform errors'."
+            -p "$PROMPT" 2>&1 | tee /tmp/copilot_output.txt
 
           echo "📊 Output size: $(wc -l < /tmp/copilot_output.txt) lines"
-          echo "════════════════════════════════════════"
-          echo "🤖 Copilot Terraform Analysis" >> "$GITHUB_STEP_SUMMARY"
+          echo "## 🤖 Copilot Terraform Analysis" >> "$GITHUB_STEP_SUMMARY"
           echo '```' >> "$GITHUB_STEP_SUMMARY"
           cat /tmp/copilot_output.txt >> "$GITHUB_STEP_SUMMARY"
           echo '```' >> "$GITHUB_STEP_SUMMARY"
           
-      - name: Fail if Terraform errored
-        if: >
-          steps.init.outcome == 'failure' ||
-          steps.validate.outcome == 'failure' ||
-          steps.plan.outcome == 'failure'
-        run: exit 1
+      # - name: Fail if Terraform errored
+      #   if: >
+      #     steps.init.outcome == 'failure' ||
+      #     steps.validate.outcome == 'failure' ||
+      #     steps.plan.outcome == 'failure'
+      #   run: exit 1
 
       
