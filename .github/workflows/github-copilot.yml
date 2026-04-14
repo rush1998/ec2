@@ -77,6 +77,15 @@ jobs:
           version: latest
       - run: |
           echo "🤖 GitHub Copilot CLI — Terraform Analysis"
+          cat /tmp/tf_validate.log /tmp/tf_plan.log > /tmp/copilot_logs.txt 2>/dev/null || true
+          LOG_CONTENT="$(cat /tmp/copilot_logs.txt 2>/dev/null || echo '')"
+
+          if [ -z "$LOG_CONTENT" ]; then
+            echo "⚠️  No Terraform logs found — skipping Copilot analysis."
+            echo "## 🤖 Copilot Terraform Analysis" >> "$GITHUB_STEP_SUMMARY"
+            echo "> ⚠️ No logs available. Check that AWS credentials and backend secrets are set correctly." >> "$GITHUB_STEP_SUMMARY"
+            exit 0
+          fi
 
           echo "⏳ Running Copilot analysis... please wait"
           copilot \
@@ -84,7 +93,9 @@ jobs:
             --deny-tool='shell(rm)' \
             --allow-all-tools \
             -p "You are a Terraform expert.
-          Analyze these Terraform logs:
+          Analyze these Terraform CI logs:
+
+          $LOG_CONTENT
 
           1. List every error found.
           2. Explain the root cause of each error in one line only.
