@@ -21,7 +21,6 @@ jobs:
     permissions:
       contents: write
       pull-requests: write
-
     defaults:
       run:
         working-directory: ./terraform
@@ -78,9 +77,7 @@ jobs:
           version: latest
       - run: |
           echo "🤖 GitHub Copilot CLI — Terraform Analysis"
-
           cat /tmp/tf_validate.log /tmp/tf_plan.log > /tmp/copilot_logs.txt 2>/dev/null || true
-
           LOG_CONTENT="$(cat /tmp/copilot_logs.txt 2>/dev/null || echo '')"
 
           if [ -z "$LOG_CONTENT" ]; then
@@ -90,13 +87,13 @@ jobs:
             exit 0
           fi
 
-          echo "⏳ Running Copilot analysis... please wait"
-          echo "────────────────────────────────────────"
-
+          echo "⏳ Running Copilot analysis and auto-fix... please wait"
+          BRANCH="copilot-fix-${{ github.run_id }}"
+          SUMMARY="Fix Terraform instance_type error"
           copilot \
             --model=gpt-4.1 \
-            --deny-tool='shell(rm)' \
             --allow-all-tools \
+            --deny-tool='shell(rm)' \
             -p "You are a Terraform expert.
           Analyze these Terraform CI logs:
 
@@ -105,36 +102,19 @@ jobs:
           1. List every error found.
           2. Explain the root cause of each error in one line only.
           3. Provide just the terraform code fix.
-          Output plain text only. Be concise." 2>&1 | tee /tmp/copilot_output.txt
+          Output plain text only. Be concise.
+
+          Then, create branch copilot-fix-${{ github.run_id }}. Fix the errors to make the pipeline pass. Commit with message '$SUMMARY'. Push to $BRANCH. Create PR from $BRANCH to ${{ github.ref_name }} titled 'Copilot fix: $SUMMARY' with body 'Fixes Terraform errors'." 2>&1 | tee /tmp/copilot_output.txt
 
           echo "📊 Output size: $(wc -l < /tmp/copilot_output.txt) lines"
-          echo "════════════════════════════════════════"
-          echo "## 🤖 Copilot Terraform Analysis" >> "$GITHUB_STEP_SUMMARY"
+          echo "🤖 Copilot Terraform Analysis" >> "$GITHUB_STEP_SUMMARY"
           echo '```' >> "$GITHUB_STEP_SUMMARY"
           cat /tmp/copilot_output.txt >> "$GITHUB_STEP_SUMMARY"
           echo '```' >> "$GITHUB_STEP_SUMMARY"
-
-      # ✅ Hard fail LAST — after Copilot has run
+          
       - name: Fail if Terraform errored
         if: >
           steps.init.outcome == 'failure' ||
           steps.validate.outcome == 'failure' ||
           steps.plan.outcome == 'failure'
         run: exit 1
-
-      - name: Fix the pipeline and push the code 
-        if: always()
-        uses: actions/setup-copilot@v0
-        with:
-          version: latest
-      - run: |
-          echo "🤖 GitHub Copilot CLI — Auto-fix Terraform"
-          ##════════════════════════════════════════##
-          BRANCH="copilot-fix-${{ github.run_id }}"
-          SUMMARY="Fix Terraform instance_type error"
-          copilot \
-            --model=gpt-4.1 \
-            --allow-all-tools \
-            --deny-tool='shell(rm)' \
-            --deny-tool='shell(git merge)' \
-            -p "Create branch copilot-fix-${{ github.run_id }}. Fix error to make pipeline pass. Commit with message '$SUMMARY'. Push to $BRANCH. Create PR from $BRANCH to ${{ github.ref_name }} titled 'Copilot fix: $SUMMARY' with body 'Fixes Terraform errors'."
