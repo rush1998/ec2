@@ -93,6 +93,8 @@ jobs:
           2. Explain the root cause of each error in one line only.
           3. Apply only the necessary Terraform code changes to fix the errors.
           4. Re-run validate and plan to confirm the fix.
+          If init/validate/plan output indicates success or no errors in any wording (for example: "No errors were found", "Success!", "No changes", or equivalent), stop and skip all remaining steps. In that case, output only: "No Terraform errors found. No code changes or PR needed."
+          Only when errors are found and fixed, continue with the remaining steps:
           5. Create branch $BRANCH.
           6. Commit with message: $SUMMARY
           7. Push to branch $BRANCH.
