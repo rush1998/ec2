@@ -67,10 +67,9 @@ resource "aws_security_group" "ec2_sg" {
 }
 
 # EC2 Instance using dynamic AMI
-# INTENTIONAL ERROR: invalid_instance_type_xyz is not a valid argument for aws_instance
 resource "aws_instance" "my_ec2" {
   ami                         = data.aws_ami.amazon_linux_2023.id
-  instance_type              = var.instance
+  instance_type               = var.instance_type
   subnet_id                   = tolist(data.aws_subnets.default.ids)[0]
   vpc_security_group_ids      = [aws_security_group.ec2_sg.id]
   associate_public_ip_address = true
